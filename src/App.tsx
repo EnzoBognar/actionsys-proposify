@@ -3,21 +3,28 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { LanguageProvider } from "@/contexts/LanguageContext";
+import { MfaProvider } from "@/contexts/MfaContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Users from "./pages/security/Users";
 import Profiles from "./pages/security/Profiles";
 import Permissions from "./pages/security/Permissions";
+import Preferences from "./pages/Preferences";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+      <LanguageProvider>
+        <MfaProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/usuarios" element={
@@ -45,10 +52,7 @@ const App = () => (
           } />
           <Route path="/preferencias" element={
             <AppLayout>
-              <div className="p-6">
-                <h1 className="text-3xl font-bold">Preferências</h1>
-                <p className="text-muted-foreground mt-2">Preferências do usuário - Em desenvolvimento</p>
-              </div>
+              <Preferences />
             </AppLayout>
           } />
           <Route path="/propostas" element={
@@ -71,7 +75,10 @@ const App = () => (
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
-    </TooltipProvider>
+          </TooltipProvider>
+        </MfaProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 
