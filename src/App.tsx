@@ -42,14 +42,6 @@ const App = () => (
               <Permissions />
             </AppLayout>
           } />
-          <Route path="/perfil-usuario" element={
-            <AppLayout>
-              <div className="p-6">
-                <h1 className="text-3xl font-bold">Perfil-Usuário</h1>
-                <p className="text-muted-foreground mt-2">Associação entre perfis e usuários - Em desenvolvimento</p>
-              </div>
-            </AppLayout>
-          } />
           <Route path="/preferencias" element={
             <AppLayout>
               <Preferences />

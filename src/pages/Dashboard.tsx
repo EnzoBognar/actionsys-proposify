@@ -9,7 +9,10 @@ import {
   Clock, 
   CheckCircle,
   AlertCircle,
-  Plus
+  Plus,
+  Activity,
+  BarChart3,
+  UserCheck
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -32,10 +35,62 @@ export default function Dashboard() {
       </div>
 
       {/* Cartões de Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Propostas</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">127</div>
+            <p className="text-xs text-muted-foreground">
+              +15% este mês
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Propostas em Andamento</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">42</div>
+            <p className="text-xs text-muted-foreground">
+              +8 em relação à semana anterior
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Propostas Aceitas</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">73</div>
+            <p className="text-xs text-muted-foreground">
+              Taxa de aprovação: 68%
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Em Elaboração</CardTitle>
+            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">23</div>
+            <p className="text-xs text-muted-foreground">
+              Aguardando informações
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Usuários Ativos</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -45,95 +100,78 @@ export default function Dashboard() {
             </p>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Propostas Ativas</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">47</div>
-            <p className="text-xs text-muted-foreground">
-              +12% em relação ao mês anterior
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Taxa de Aprovação</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">68%</div>
-            <p className="text-xs text-muted-foreground">
-              +5% em relação ao mês anterior
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Perfis de Acesso</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">4</div>
-            <p className="text-xs text-muted-foreground">
-              Administrador, Gerente, Analista, Consultor
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Propostas Recentes */}
+        {/* Atividades Recentes */}
         <Card>
           <CardHeader>
-            <CardTitle>Propostas Recentes</CardTitle>
-            <CardDescription>Últimas propostas criadas no sistema</CardDescription>
+            <CardTitle>Atividades Recentes</CardTitle>
+            <CardDescription>Últimas atividades realizadas pelos usuários</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-primary rounded-full"></div>
+                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                  <Users className="w-4 h-4 text-primary" />
+                </div>
                 <div>
-                  <div className="font-medium">Proposta Sistema ERP - Empresa ABC</div>
-                  <div className="text-sm text-muted-foreground">Criada há 2 horas</div>
+                  <div className="font-medium">João Silva</div>
+                  <div className="text-sm text-muted-foreground">Criou nova proposta - ERP Sistema ABC</div>
                 </div>
               </div>
-              <Badge variant="outline">
-                <Clock className="w-3 h-3 mr-1" />
-                Em Análise
-              </Badge>
+              <div className="text-right">
+                <Badge variant="outline">Gerente</Badge>
+                <div className="text-xs text-muted-foreground">2 horas atrás</div>
+              </div>
             </div>
 
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                </div>
                 <div>
-                  <div className="font-medium">Consultoria BI - Tech Solutions</div>
-                  <div className="text-sm text-muted-foreground">Criada há 5 horas</div>
+                  <div className="font-medium">Maria Santos</div>
+                  <div className="text-sm text-muted-foreground">Aprovou proposta de Consultoria BI</div>
                 </div>
               </div>
-              <Badge variant="default">
-                <CheckCircle className="w-3 h-3 mr-1" />
-                Aprovada
-              </Badge>
+              <div className="text-right">
+                <Badge variant="default">Administrador</Badge>
+                <div className="text-xs text-muted-foreground">5 horas atrás</div>
+              </div>
             </div>
 
             <div className="flex items-center justify-between p-3 border rounded-lg">
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Activity className="w-4 h-4 text-blue-600" />
+                </div>
                 <div>
-                  <div className="font-medium">Desenvolvimento Mobile - StartupXYZ</div>
-                  <div className="text-sm text-muted-foreground">Criada há 1 dia</div>
+                  <div className="font-medium">Carlos Oliveira</div>
+                  <div className="text-sm text-muted-foreground">Atualizou permissões do sistema</div>
                 </div>
               </div>
-              <Badge variant="secondary">
-                <AlertCircle className="w-3 h-3 mr-1" />
-                Pendente
-              </Badge>
+              <div className="text-right">
+                <Badge variant="secondary">Analista</Badge>
+                <div className="text-xs text-muted-foreground">1 dia atrás</div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                  <UserCheck className="w-4 h-4 text-orange-600" />
+                </div>
+                <div>
+                  <div className="font-medium">Ana Costa</div>
+                  <div className="text-sm text-muted-foreground">Cadastrou novo usuário no sistema</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <Badge variant="outline">Consultor</Badge>
+                <div className="text-xs text-muted-foreground">2 dias atrás</div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -167,9 +205,9 @@ export default function Dashboard() {
             </Button>
 
             <Button variant="outline" asChild className="w-full justify-start">
-              <Link to="/perfil-usuario">
+              <Link to="/preferencias">
                 <Users className="mr-2 h-4 w-4" />
-                Associar Perfil-Usuário
+                Preferências do Sistema
               </Link>
             </Button>
           </CardContent>

@@ -32,7 +32,6 @@ const securityItems = [
   { title: "Usuários", url: "/usuarios", icon: Users },
   { title: "Perfis", url: "/perfis", icon: Shield },
   { title: "Permissões", url: "/permissoes", icon: Key },
-  { title: "Perfil-Usuário", url: "/perfil-usuario", icon: UserCheck },
   { title: "Preferências", url: "/preferencias", icon: Settings },
 ];
 
@@ -147,6 +146,13 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      
+      {/* Copyright no final da sidebar */}
+      <div className="mt-auto p-4 border-t">
+        <p className="text-xs text-muted-foreground text-center">
+          © {new Date().getFullYear()} Actionsys. Todos os direitos reservados.
+        </p>
+      </div>
     </Sidebar>
   );
 }
