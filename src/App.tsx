@@ -8,6 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { MfaProvider } from "@/contexts/MfaContext";
 import Index from "./pages/Index";
+import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import Users from "./pages/security/Users";
 import Profiles from "./pages/security/Profiles";
@@ -27,6 +28,7 @@ const App = () => (
             <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/login" element={<Login />} />
           <Route path="/usuarios" element={
             <AppLayout>
               <Users />
