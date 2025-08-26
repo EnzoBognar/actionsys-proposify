@@ -19,197 +19,122 @@ import { Link } from "react-router-dom";
 export default function Dashboard() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Bem-vindo ao Portal de Propostas Actionsys
-          </p>
-        </div>
-        <Button asChild>
-          <Link to="/propostas" className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nova Proposta
-          </Link>
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground">
+          Bem-vindo, Administrador (admin)
+        </p>
       </div>
 
       {/* Cartões de Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Propostas</CardTitle>
+            <CardTitle className="text-sm font-medium">Propostas Ativas</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">127</div>
+            <div className="text-2xl font-bold">8</div>
             <p className="text-xs text-muted-foreground">
-              +15% este mês
+              Em andamento
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Propostas em Andamento</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Receita Mensal</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">42</div>
+            <div className="text-2xl font-bold">R$ 285.000</div>
             <p className="text-xs text-muted-foreground">
-              +8 em relação à semana anterior
+              +12% vs mês anterior
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Propostas Aceitas</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Taxa de Aprovação</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">73</div>
+            <div className="text-2xl font-bold">78%</div>
             <p className="text-xs text-muted-foreground">
-              Taxa de aprovação: 68%
+              Propostas aprovadas
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Em Elaboração</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">23</div>
-            <p className="text-xs text-muted-foreground">
-              Aguardando informações
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Usuários Ativos</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">19</div>
+            <div className="text-2xl font-bold">24</div>
             <p className="text-xs text-muted-foreground">
-              +2 este mês
+              Usuários cadastrados
             </p>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Atividades Recentes */}
+        {/* Atividade Recente */}
         <Card>
           <CardHeader>
-            <CardTitle>Atividades Recentes</CardTitle>
-            <CardDescription>Últimas atividades realizadas pelos usuários</CardDescription>
+            <CardTitle>Atividade Recente</CardTitle>
+            <CardDescription>Últimas ações no sistema</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                  <Users className="w-4 h-4 text-primary" />
-                </div>
-                <div>
-                  <div className="font-medium">João Silva</div>
-                  <div className="text-sm text-muted-foreground">Criou nova proposta - ERP Sistema ABC</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <Badge variant="outline">Gerente</Badge>
-                <div className="text-xs text-muted-foreground">2 horas atrás</div>
-              </div>
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-3 text-sm">
+              <Activity className="h-4 w-4 text-blue-600" />
+              <span>Maria criou nova proposta "Sistema ERP"</span>
+              <span className="text-muted-foreground ml-auto">2h atrás</span>
             </div>
-
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                </div>
-                <div>
-                  <div className="font-medium">Maria Santos</div>
-                  <div className="text-sm text-muted-foreground">Aprovou proposta de Consultoria BI</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <Badge variant="default">Administrador</Badge>
-                <div className="text-xs text-muted-foreground">5 horas atrás</div>
-              </div>
+            <div className="flex items-center gap-3 text-sm">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <span>João aprovou proposta "Migração Cloud"</span>
+              <span className="text-muted-foreground ml-auto">4h atrás</span>
             </div>
-
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Activity className="w-4 h-4 text-blue-600" />
-                </div>
-                <div>
-                  <div className="font-medium">Carlos Oliveira</div>
-                  <div className="text-sm text-muted-foreground">Atualizou permissões do sistema</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <Badge variant="secondary">Analista</Badge>
-                <div className="text-xs text-muted-foreground">1 dia atrás</div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
-                  <UserCheck className="w-4 h-4 text-orange-600" />
-                </div>
-                <div>
-                  <div className="font-medium">Ana Costa</div>
-                  <div className="text-sm text-muted-foreground">Cadastrou novo usuário no sistema</div>
-                </div>
-              </div>
-              <div className="text-right">
-                <Badge variant="outline">Consultor</Badge>
-                <div className="text-xs text-muted-foreground">2 dias atrás</div>
-              </div>
+            <div className="flex items-center gap-3 text-sm">
+              <UserCheck className="h-4 w-4 text-purple-600" />
+              <span>Admin cadastrou novo usuário</span>
+              <span className="text-muted-foreground ml-auto">1d atrás</span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Módulo de Segurança */}
+        {/* Propostas por Status */}
         <Card>
           <CardHeader>
-            <CardTitle>Módulo de Segurança</CardTitle>
-            <CardDescription>Acesso rápido às funcionalidades de segurança</CardDescription>
+            <CardTitle>Propostas por Status</CardTitle>
+            <CardDescription>Distribuição atual das propostas</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Button variant="outline" asChild className="w-full justify-start">
-              <Link to="/usuarios">
-                <Users className="mr-2 h-4 w-4" />
-                Gerenciar Usuários (19)
-              </Link>
-            </Button>
-
-            <Button variant="outline" asChild className="w-full justify-start">
-              <Link to="/perfis">
-                <Shield className="mr-2 h-4 w-4" />
-                Gerenciar Perfis (4)
-              </Link>
-            </Button>
-
-            <Button variant="outline" asChild className="w-full justify-start">
-              <Link to="/permissoes">
-                <Shield className="mr-2 h-4 w-4" />
-                Configurar Permissões
-              </Link>
-            </Button>
-
-            <Button variant="outline" asChild className="w-full justify-start">
-              <Link to="/preferencias">
-                <Users className="mr-2 h-4 w-4" />
-                Preferências do Sistema
-              </Link>
-            </Button>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
+                <span className="text-sm">Rascunho</span>
+              </div>
+              <span className="font-medium">2</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span className="text-sm">Enviada</span>
+              </div>
+              <span className="font-medium">4</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                <span className="text-sm">Aprovada</span>
+              </div>
+              <span className="font-medium">6</span>
+            </div>
           </CardContent>
         </Card>
       </div>

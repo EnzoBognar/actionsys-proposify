@@ -126,25 +126,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Relatórios */}
-        <SidebarGroup>
-          <SidebarGroupLabel>
-            <BarChart3 className="h-4 w-4" />
-            {!isCollapsed && <span>Relatórios</span>}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink to="/relatorios" className={getNavCls}>
-                    <BarChart3 className="h-4 w-4" />
-                    {!isCollapsed && <span>Dashboard</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
       
       {/* Copyright no final da sidebar */}

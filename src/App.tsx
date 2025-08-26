@@ -55,14 +55,6 @@ const App = () => (
               </div>
             </AppLayout>
           } />
-          <Route path="/relatorios" element={
-            <AppLayout>
-              <div className="p-6">
-                <h1 className="text-3xl font-bold">Relatórios</h1>
-                <p className="text-muted-foreground mt-2">Dashboard de relatórios - Em desenvolvimento</p>
-              </div>
-            </AppLayout>
-          } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
