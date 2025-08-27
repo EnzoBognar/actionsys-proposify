@@ -54,13 +54,17 @@ export function AppSidebar() {
       <SidebarContent className="pt-2">
         {/* Dashboard */}
         <SidebarGroup>
+          <SidebarGroupLabel>
+            <Home className="h-4 w-4" />
+            {!isCollapsed && <span>Dashboard</span>}
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <NavLink to="/" className={getNavCls}>
                     <Home className="h-4 w-4" />
-                    {!isCollapsed && <span>Dashboard</span>}
+                    {!isCollapsed && <span>Painel Principal</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
