@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { 
   Users, 
@@ -52,12 +53,8 @@ export function AppSidebar() {
   return (
     <Sidebar className={isCollapsed ? "w-14" : "w-64"} collapsible="icon">
       <SidebarContent className="pt-2">
-        {/* Dashboard */}
+        {/* Painel Principal */}
         <SidebarGroup>
-          <SidebarGroupLabel>
-            <Home className="h-4 w-4" />
-            {!isCollapsed && <span>Dashboard</span>}
-          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
