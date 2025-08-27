@@ -22,16 +22,30 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface User {
   id: number;
   name: string;
   email: string;
   phone: string;
-  status: 'ativo' | 'inativo' | 'bloqueado';
+  status: 'ativo' | 'inativo' | 'bloqueado' | 'cancelado' | 'pre-registro';
   lastLogin: string;
   createdAt: string;
+  profiles: Profile[];
 }
+
+interface Profile {
+  id: number;
+  name: string;
+  description: string;
+}
+
+const mockProfiles: Profile[] = [
+  { id: 1, name: "Administrador", description: "Acesso total ao sistema" },
+  { id: 2, name: "Gerente", description: "Gerenciamento de equipes e projetos" },
+  { id: 3, name: "Consultor / Analista", description: "Criação e análise de propostas" }
+];
 
 const mockUsers: User[] = [
   {
@@ -41,7 +55,8 @@ const mockUsers: User[] = [
     phone: "11999999999",
     status: "ativo",
     lastLogin: "2024-01-15 14:30:00",
-    createdAt: "2024-01-01 10:00:00"
+    createdAt: "2024-01-01 10:00:00",
+    profiles: [mockProfiles[0], mockProfiles[1]]
   },
   {
     id: 2,
@@ -50,7 +65,8 @@ const mockUsers: User[] = [
     phone: "11888888888",
     status: "ativo",
     lastLogin: "2024-01-15 09:15:00",
-    createdAt: "2024-01-05 16:30:00"
+    createdAt: "2024-01-05 16:30:00",
+    profiles: [mockProfiles[1]]
   },
   {
     id: 3,
@@ -59,7 +75,8 @@ const mockUsers: User[] = [
     phone: "11777777777", 
     status: "inativo",
     lastLogin: "2024-01-10 11:45:00",
-    createdAt: "2024-01-03 14:20:00"
+    createdAt: "2024-01-03 14:20:00",
+    profiles: [mockProfiles[2]]
   }
 ];
 
@@ -67,6 +84,50 @@ export default function Users() {
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedProfiles, setSelectedProfiles] = useState<Profile[]>([]);
+
+  const handleViewUser = (user: User) => {
+    setSelectedUser(user);
+    setIsViewDialogOpen(true);
+  };
+
+  const handleEditUser = (user: User) => {
+    setSelectedUser(user);
+    setSelectedProfiles(user.profiles);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleProfileToggle = (profile: Profile, checked: boolean) => {
+    if (checked) {
+      setSelectedProfiles(prev => [...prev, profile]);
+    } else {
+      setSelectedProfiles(prev => prev.filter(p => p.id !== profile.id));
+    }
+  };
+
+  const addNewProfile = () => {
+    // Find profiles not yet selected
+    const availableProfiles = mockProfiles.filter(
+      profile => !selectedProfiles.some(sp => sp.id === profile.id)
+    );
+    if (availableProfiles.length > 0) {
+      setSelectedProfiles(prev => [...prev, availableProfiles[0]]);
+    }
+  };
+
+  const saveUserProfiles = () => {
+    if (selectedUser) {
+      setUsers(prev => prev.map(user => 
+        user.id === selectedUser.id 
+          ? { ...user, profiles: selectedProfiles }
+          : user
+      ));
+    }
+    setIsEditDialogOpen(false);
+  };
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -77,12 +138,22 @@ export default function Users() {
     const variants = {
       ativo: "default",
       inativo: "secondary", 
-      bloqueado: "destructive"
+      bloqueado: "destructive",
+      cancelado: "destructive",
+      "pre-registro": "outline"
+    } as const;
+
+    const labels = {
+      ativo: "Ativo",
+      inativo: "Inativo",
+      bloqueado: "Bloqueado",
+      cancelado: "Cancelado", 
+      "pre-registro": "Pré-Registro"
     } as const;
 
     return (
       <Badge variant={variants[status as keyof typeof variants]}>
-        {status}
+        {labels[status as keyof typeof labels]}
       </Badge>
     );
   };
@@ -207,10 +278,10 @@ export default function Users() {
                     <TableCell>{new Date(user.lastLogin).toLocaleString('pt-BR')}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" onClick={() => handleViewUser(user)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
@@ -225,6 +296,174 @@ export default function Users() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal de Visualização */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Usuário</DialogTitle>
+            <DialogDescription>
+              Informações completas do usuário selecionado
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedUser && (
+            <div className="grid grid-cols-2 gap-4 py-4">
+              <div className="space-y-2">
+                <Label>Nome Completo</Label>
+                <p className="p-2 bg-muted rounded">{selectedUser.name}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>E-mail</Label>
+                <p className="p-2 bg-muted rounded">{selectedUser.email}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Telefone</Label>
+                <p className="p-2 bg-muted rounded">{selectedUser.phone}</p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <div className="p-2">
+                  {getStatusBadge(selectedUser.status)}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Último Login</Label>
+                <p className="p-2 bg-muted rounded">
+                  {new Date(selectedUser.lastLogin).toLocaleString('pt-BR')}
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Data de Criação</Label>
+                <p className="p-2 bg-muted rounded">
+                  {new Date(selectedUser.createdAt).toLocaleString('pt-BR')}
+                </p>
+              </div>
+              
+              <div className="col-span-2 space-y-2">
+                <Label>Perfis Atribuídos</Label>
+                <div className="flex flex-wrap gap-2">
+                  {selectedUser.profiles.map((profile) => (
+                    <Badge key={profile.id} variant="secondary">
+                      {profile.name}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <div className="flex justify-end">
+            <Button onClick={() => setIsViewDialogOpen(false)}>
+              Fechar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Edição */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogDescription>
+              Edite as informações e perfis do usuário
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedUser && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editName">Nome Completo</Label>
+                  <Input id="editName" defaultValue={selectedUser.name} />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="editEmail">E-mail</Label>
+                  <Input id="editEmail" type="email" defaultValue={selectedUser.email} />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="editPhone">Telefone</Label>
+                  <Input id="editPhone" defaultValue={selectedUser.phone} />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="editStatus">Status</Label>
+                  <Select defaultValue={selectedUser.status}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ativo">Ativo</SelectItem>
+                      <SelectItem value="inativo">Inativo</SelectItem>
+                      <SelectItem value="bloqueado">Bloqueado</SelectItem>
+                      <SelectItem value="cancelado">Cancelado</SelectItem>
+                      <SelectItem value="pre-registro">Pré-Registro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label>Perfis do Usuário</Label>
+                  <Button 
+                    type="button" 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={addNewProfile}
+                    className="gap-1"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Adicionar Perfil
+                  </Button>
+                </div>
+                
+                <div className="space-y-2 border rounded-lg p-3">
+                  {mockProfiles.map((profile) => (
+                    <div key={profile.id} className="flex items-center space-x-3">
+                      <Checkbox
+                        id={`profile-${profile.id}`}
+                        checked={selectedProfiles.some(sp => sp.id === profile.id)}
+                        onCheckedChange={(checked) => 
+                          handleProfileToggle(profile, checked as boolean)
+                        }
+                      />
+                      <div className="flex-1">
+                        <Label 
+                          htmlFor={`profile-${profile.id}`} 
+                          className="text-sm font-medium cursor-pointer"
+                        >
+                          {profile.name}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          {profile.description}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={saveUserProfiles}>
+              Salvar Alterações
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
