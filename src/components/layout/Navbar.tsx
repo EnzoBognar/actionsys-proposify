@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Link } from "react-router-dom";
 import logoActionsys from "@/assets/logo-actionsys.png";
 
 export function Navbar() {
@@ -77,8 +78,10 @@ export function Navbar() {
                   <ChevronRight className="ml-auto h-4 w-4" />
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent>
-                  <DropdownMenuItem>
-                    Preferências
+                  <DropdownMenuItem asChild>
+                    <Link to="/preferencias">
+                      Preferências
+                    </Link>
                   </DropdownMenuItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
