@@ -42,6 +42,7 @@ All colors MUST be HSL.
     --primary-blue-light: 214 84% 66%;
     --secondary-blue: 214 32% 91%;
     --accent-blue: 214 50% 80%;
+    --actionsys-blue: 213 79% 14%;
     
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(214 84% 56%), hsl(214 84% 46%));
@@ -106,6 +107,7 @@ All colors MUST be HSL.
     --primary-blue-light: 214 84% 66%;
     --secondary-blue: 215 25% 27%;
     --accent-blue: 214 50% 40%;
+    --actionsys-blue: 213 79% 14%;
     
     /* Dark gradients */
     --gradient-primary: linear-gradient(135deg, hsl(214 84% 56%), hsl(214 84% 46%));

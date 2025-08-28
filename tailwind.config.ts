@@ -31,6 +31,9 @@ export default {
 					'blue-dark': 'hsl(var(--primary-blue-dark))',
 					'blue-light': 'hsl(var(--primary-blue-light))'
 				},
+				actionsys: {
+					blue: 'hsl(var(--actionsys-blue))'
+				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
 					foreground: 'hsl(var(--secondary-foreground))',

@@ -7,6 +7,8 @@ import { ThemeProvider } from "next-themes";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { MfaProvider } from "@/contexts/MfaContext";
+import { AuthProvider } from "@/hooks/useAuth";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
@@ -22,46 +24,58 @@ const App = () => (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <LanguageProvider>
         <MfaProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
+          <AuthProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
           <Route path="/usuarios" element={
-            <AppLayout>
-              <Users />
-            </AppLayout>
+            <ProtectedRoute>
+              <AppLayout>
+                <Users />
+              </AppLayout>
+            </ProtectedRoute>
           } />
           <Route path="/perfis" element={
-            <AppLayout>
-              <Profiles />
-            </AppLayout>
+            <ProtectedRoute>
+              <AppLayout>
+                <Profiles />
+              </AppLayout>
+            </ProtectedRoute>
           } />
           <Route path="/permissoes" element={
-            <AppLayout>
-              <Permissions />
-            </AppLayout>
+            <ProtectedRoute>
+              <AppLayout>
+                <Permissions />
+              </AppLayout>
+            </ProtectedRoute>
           } />
           <Route path="/preferencias" element={
-            <AppLayout>
-              <Preferences />
-            </AppLayout>
+            <ProtectedRoute>
+              <AppLayout>
+                <Preferences />
+              </AppLayout>
+            </ProtectedRoute>
           } />
           <Route path="/propostas" element={
-            <AppLayout>
-              <div className="p-6">
-                <h1 className="text-3xl font-bold">Propostas</h1>
-                <p className="text-muted-foreground mt-2">Gestão de propostas comerciais - Em desenvolvimento</p>
-              </div>
-            </AppLayout>
+            <ProtectedRoute>
+              <AppLayout>
+                <div className="p-6">
+                  <h1 className="text-3xl font-bold">Propostas</h1>
+                  <p className="text-muted-foreground mt-2">Gestão de propostas comerciais - Em desenvolvimento</p>
+                </div>
+              </AppLayout>
+            </ProtectedRoute>
           } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
-          </TooltipProvider>
+            </TooltipProvider>
+          </AuthProvider>
         </MfaProvider>
       </LanguageProvider>
     </ThemeProvider>
