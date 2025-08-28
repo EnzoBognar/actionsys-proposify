@@ -33,7 +33,6 @@ const securityItems = [
   { title: "Usuários", url: "/usuarios", icon: Users },
   { title: "Perfis", url: "/perfis", icon: Shield },
   { title: "Permissões", url: "/permissoes", icon: Key },
-  { title: "Preferências", url: "/preferencias", icon: Settings },
 ];
 
 export function AppSidebar() {
