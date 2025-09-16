@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ import {
 const mockUser = {
   id: "current-user",
   name: "João Silva Santos",
+  treatment: "Sr.", // Nova propriedade para forma de tratamento
   email: "joao.silva@actionsys.com.br",
   role: "Analista de Sistemas",
   department: "Tecnologia da Informação",
@@ -202,7 +204,11 @@ export default function Profile() {
             <div className="flex-1 space-y-4">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                  <h1 className="text-3xl font-bold text-foreground">{user.name}</h1>
+                  <h1 className="text-3xl font-bold text-foreground">
+                    {user.treatment && user.treatment !== "Sem tratamento" 
+                      ? `${user.treatment} ${user.name}` 
+                      : user.name}
+                  </h1>
                   <p className="text-lg text-muted-foreground mt-1">{user.role}</p>
                 </div>
                 
@@ -223,6 +229,23 @@ export default function Profile() {
                         </DialogDescription>
                       </DialogHeader>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="treatment">Forma de Tratamento</Label>
+                          <Select defaultValue={user.treatment}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione uma forma de tratamento" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Sr.">Sr.</SelectItem>
+                              <SelectItem value="Sra.">Sra.</SelectItem>
+                              <SelectItem value="Mx.">Mx.</SelectItem>
+                              <SelectItem value="Prof.">Prof.</SelectItem>
+                              <SelectItem value="Dr.">Dr.</SelectItem>
+                              <SelectItem value="Dra.">Dra.</SelectItem>
+                              <SelectItem value="Sem tratamento">Sem tratamento definido</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <div className="space-y-2">
                           <Label htmlFor="name">Nome Completo</Label>
                           <Input id="name" defaultValue={user.name} />
