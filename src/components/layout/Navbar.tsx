@@ -79,20 +79,12 @@ export function Navbar() {
                 <User className="mr-2 h-4 w-4" />
                 Perfil
               </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
+              <DropdownMenuItem asChild>
+                <Link to="/preferencias" className="flex items-center">
                   <Settings className="mr-2 h-4 w-4" />
-                  <span>Configurações</span>
-                  <ChevronRight className="ml-auto h-4 w-4" />
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem asChild>
-                    <Link to="/preferencias">
-                      Preferências
-                    </Link>
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
+                  Configurações
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                 Sair

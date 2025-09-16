@@ -128,25 +128,6 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Minha Conta */}
-        <SidebarGroup>
-          <SidebarGroupLabel>
-            <UserCheck className="h-4 w-4" />
-            {!isCollapsed && <span>Minha Conta</span>}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <NavLink to="/preferencias" className={getNavCls}>
-                    <UserCheck className="h-4 w-4" />
-                    {!isCollapsed && <span>Minhas Preferências</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
 
       </SidebarContent>
       
