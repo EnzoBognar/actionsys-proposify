@@ -34,7 +34,6 @@ const securityItems = [
   { title: "Usuários", url: "/usuarios", icon: Users },
   { title: "Perfis", url: "/perfis", icon: Shield },
   { title: "Permissões", url: "/permissoes", icon: Key },
-  { title: "Classificação de Dados", url: "/classificacao-dados", icon: FileText },
   { title: "Auditoria e Logs", url: "/auditoria-logs", icon: Settings },
 ];
 

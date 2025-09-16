@@ -16,7 +16,6 @@ import Users from "./pages/security/Users";
 import Profiles from "./pages/security/Profiles";
 import Permissions from "./pages/security/Permissions";
 import SecurityDashboard from "./pages/security/SecurityDashboard";
-import DataClassification from "./pages/security/DataClassification";
 import AuditLogs from "./pages/security/AuditLogs";
 import Preferences from "./pages/Preferences";
 
@@ -60,13 +59,6 @@ const App = () => (
             <ProtectedRoute>
               <AppLayout>
                 <Permissions />
-              </AppLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/classificacao-dados" element={
-            <ProtectedRoute>
-              <AppLayout>
-                <DataClassification />
               </AppLayout>
             </ProtectedRoute>
           } />
