@@ -15,6 +15,9 @@ import NotFound from "./pages/NotFound";
 import Users from "./pages/security/Users";
 import Profiles from "./pages/security/Profiles";
 import Permissions from "./pages/security/Permissions";
+import SecurityDashboard from "./pages/security/SecurityDashboard";
+import DataClassification from "./pages/security/DataClassification";
+import AuditLogs from "./pages/security/AuditLogs";
 import Preferences from "./pages/Preferences";
 
 const queryClient = new QueryClient();
@@ -32,6 +35,13 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/dashboard-seguranca" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <SecurityDashboard />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
           <Route path="/usuarios" element={
             <ProtectedRoute>
               <AppLayout>
@@ -50,6 +60,20 @@ const App = () => (
             <ProtectedRoute>
               <AppLayout>
                 <Permissions />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/classificacao-dados" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <DataClassification />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/auditoria-logs" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <AuditLogs />
               </AppLayout>
             </ProtectedRoute>
           } />

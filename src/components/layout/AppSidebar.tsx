@@ -30,9 +30,12 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const securityItems = [
+  { title: "Dashboard de Segurança", url: "/dashboard-seguranca", icon: BarChart3 },
   { title: "Usuários", url: "/usuarios", icon: Users },
   { title: "Perfis", url: "/perfis", icon: Shield },
   { title: "Permissões", url: "/permissoes", icon: Key },
+  { title: "Classificação de Dados", url: "/classificacao-dados", icon: FileText },
+  { title: "Auditoria e Logs", url: "/auditoria-logs", icon: Settings },
 ];
 
 export function AppSidebar() {
@@ -79,7 +82,7 @@ export function AppSidebar() {
               <CollapsibleTrigger className="flex w-full items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Shield className="h-4 w-4" />
-                  {!isCollapsed && <span>Segurança</span>}
+                  {!isCollapsed && <span>Bancada de Segurança</span>}
                 </div>
                 {!isCollapsed && (
                   <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
@@ -119,6 +122,26 @@ export function AppSidebar() {
                   <NavLink to="/propostas" className={getNavCls}>
                     <FileText className="h-4 w-4" />
                     {!isCollapsed && <span>Lista de Propostas</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Minha Conta */}
+        <SidebarGroup>
+          <SidebarGroupLabel>
+            <UserCheck className="h-4 w-4" />
+            {!isCollapsed && <span>Minha Conta</span>}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <NavLink to="/preferencias" className={getNavCls}>
+                    <UserCheck className="h-4 w-4" />
+                    {!isCollapsed && <span>Minhas Preferências</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
