@@ -18,6 +18,7 @@ import Permissions from "./pages/security/Permissions";
 import SecurityDashboard from "./pages/security/SecurityDashboard";
 import AuditLogs from "./pages/security/AuditLogs";
 import Preferences from "./pages/Preferences";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +74,13 @@ const App = () => (
             <ProtectedRoute>
               <AppLayout>
                 <Preferences />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/perfil" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Profile />
               </AppLayout>
             </ProtectedRoute>
           } />
