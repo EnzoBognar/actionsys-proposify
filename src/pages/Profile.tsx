@@ -26,7 +26,6 @@ import {
   CreditCard,
   Shield,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 
 // Mock data - in real app this would come from props/params and API
 const mockUser = {
