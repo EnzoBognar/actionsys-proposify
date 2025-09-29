@@ -1,22 +1,30 @@
-import axios from "axios";
+// src/lib/api.ts
+type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
-export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
-});
+const BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
 
-// (opcional) anexa o JWT em todas as requisições
-api.interceptors.request.use((cfg) => {
+async function request<T>(path: string, method: HttpMethod, body?: unknown): Promise<T> {
   const token = localStorage.getItem("access_token");
-  if (token) cfg.headers.Authorization = `Bearer ${token}`;
-  return cfg;
-});
-
-// (opcional) trate erros globais aqui
-api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    // exemplo: redirecionar para login em 401
-    // if (err?.response?.status === 401) window.location.href = "/login";
-    return Promise.reject(err);
+  const res = await fetch(`${BASE}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(detail || `HTTP ${res.status}`);
   }
-);
+  // 204 No Content
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}
+
+export const api = {
+  get: <T>(path: string) => request<T>(path, "GET"),
+  post: <T>(path: string, body?: unknown) => request<T>(path, "POST", body),
+  patch: <T>(path: string, body?: unknown) => request<T>(path, "PATCH", body),
+  delete: <T>(path: string) => request<T>(path, "DELETE"),
+};

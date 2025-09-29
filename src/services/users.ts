@@ -1,3 +1,4 @@
+// src/services/users.ts
 import { api } from "../lib/api";
 
 export type Usuario = {
@@ -5,23 +6,19 @@ export type Usuario = {
   nome_user?: string | null;
   telefone_user?: string | null;
   email_user: string;
-  status_user: string;          // códigos: A/I/B/C/P/V
+  status_user: string;
   data_ult_login?: string | null;
   url_avatar_user?: string | null;
-  // o backend também envia data_cadastro (usado na tela)
 };
 
 export async function listUsuarios() {
-  const { data } = await api.get<Usuario[]>("/usuarios");
-  return data;
+  return await api.get<Usuario[]>("/usuarios");
 }
 
 export async function getUsuario(id: number) {
-  const { data } = await api.get<Usuario>(`/usuarios/${id}`);
-  return data;
+  return await api.get<Usuario>(`/usuarios/${id}`);
 }
 
-// POST sem status_user e sem ip_atualizacao (conforme backend atual)
 export async function createUsuario(input: {
   nome_user?: string;
   email_user: string;
@@ -31,14 +28,9 @@ export async function createUsuario(input: {
   await api.post("/usuarios", input);
 }
 
-// PATCH sem status_user (apenas campos permitidos)
 export async function updateUsuario(
   id: number,
-  input: {
-    nome_user?: string;
-    telefone_user?: string;
-    url_avatar_user?: string;
-  }
+  input: { nome_user?: string; telefone_user?: string; url_avatar_user?: string }
 ) {
   await api.patch(`/usuarios/${id}`, input);
 }
