@@ -8,8 +8,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { MfaVerification } from "@/components/auth/MfaVerification";
 import { ForgotPassword } from "@/components/auth/ForgotPassword";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import actionsysLogo from "@/assets/actionsys-logo.png";
 
 export default function Login() {
@@ -22,7 +20,6 @@ export default function Login() {
   
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   useEffect(() => {
     // Redirect if already authenticated
@@ -190,50 +187,6 @@ export default function Login() {
               </button>
             </div>
 
-            {/* Botão temporário para criar usuário admin */}
-            <div className="text-center space-y-2 border-t border-border pt-4">
-              <p className="text-xs text-muted-foreground">
-                Para testes (remover em produção):
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                onClick={async () => {
-                  try {
-                    const { error } = await supabase.auth.signUp({
-                      email: 'admin@actionsys.com.br',
-                      password: 'admin123',
-                      options: {
-                        emailRedirectTo: `${window.location.origin}/`,
-                        data: {
-                          name: 'Administrador',
-                          role: 'administrador'
-                        }
-                      }
-                    });
-                    
-                    if (error) {
-                      toast({
-                        title: "Erro",
-                        description: error.message,
-                        variant: "destructive",
-                      });
-                    } else {
-                      toast({
-                        title: "Sucesso",
-                        description: "Usuário admin criado! Use: admin@actionsys.com.br / admin123",
-                      });
-                    }
-                  } catch (error) {
-                    console.error("Erro ao criar usuário:", error);
-                  }
-                }}
-              >
-                Criar Usuário Admin (Temporário)
-              </Button>
-            </div>
           </div>
         </CardContent>
       </Card>
