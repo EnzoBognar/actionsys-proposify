@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useToast } from "@/hooks/use-toast";
+import { listAuditLogs, AuditLog } from "@/services/audit";
 import { 
   Search, 
   Filter, 
@@ -12,89 +15,55 @@ import {
   Calendar,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from "lucide-react";
 
 export default function AuditLogs() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [eventFilter, setEventFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  // Mock data
-  const auditLogs = [
-    {
-      id: 1,
-      timestamp: "2024-01-15 14:30:25",
-      user: "João Silva",
-      ip: "192.168.1.100",
-      action: "Login no sistema",
-      result: "Sucesso",
-      details: "Autenticação bem-sucedida via email/senha"
-    },
-    {
-      id: 2,
-      timestamp: "2024-01-15 14:28:12",
-      user: "Maria Santos",
-      ip: "192.168.1.101",
-      action: "Tentativa de login",
-      result: "Falha",
-      details: "Senha incorreta - 3ª tentativa"
-    },
-    {
-      id: 3,
-      timestamp: "2024-01-15 14:25:45",
-      user: "Admin",
-      ip: "192.168.1.50",
-      action: "Criação de usuário",
-      result: "Sucesso",
-      details: "Novo usuário: carlos.lima@empresa.com"
-    },
-    {
-      id: 4,
-      timestamp: "2024-01-15 14:20:18",
-      user: "Ana Costa",
-      ip: "192.168.1.102",
-      action: "Alteração de perfil",
-      result: "Sucesso",
-      details: "Perfil alterado de Consultor para Analista"
-    },
-    {
-      id: 5,
-      timestamp: "2024-01-15 14:15:33",
-      user: "Carlos Lima",
-      ip: "192.168.1.103",
-      action: "Acesso a documento",
-      result: "Sucesso",
-      details: "Documento: Relatório_Confidencial_Q4.pdf"
-    },
-    {
-      id: 6,
-      timestamp: "2024-01-15 14:10:07",
-      user: "Usuário Desconhecido",
-      ip: "203.45.67.89",
-      action: "Tentativa de acesso",
-      result: "Bloqueado",
-      details: "IP bloqueado por múltiplas tentativas"
-    },
-    {
-      id: 7,
-      timestamp: "2024-01-15 14:05:52",
-      user: "João Silva",
-      ip: "192.168.1.100",
-      action: "Configuração MFA",
-      result: "Sucesso",
-      details: "MFA habilitado via SMS"
-    },
-    {
-      id: 8,
-      timestamp: "2024-01-15 14:00:15",
-      user: "Maria Santos",
-      ip: "192.168.1.101",
-      action: "Download de arquivo",
-      result: "Sucesso",
-      details: "Arquivo: Manual_Usuario_v2.pdf"
+  const loadLogs = async () => {
+    setLoading(true);
+    try {
+      const response = await listAuditLogs({
+        q: searchTerm || undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+      });
+      setAuditLogs(response.logs);
+      setTotal(response.total);
+    } catch (error) {
+      console.error("Error loading audit logs:", error);
+      
+      // Se for 403, redirecionar para dashboard
+      if (error instanceof Error && error.message.includes("403")) {
+        toast({
+          title: "Acesso negado",
+          description: "Você não tem permissão para visualizar os logs de auditoria.",
+          variant: "destructive",
+        });
+        navigate("/dashboard");
+        return;
+      }
+      
+      toast({
+        title: "Erro ao carregar logs",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    loadLogs();
+  }, [searchTerm, statusFilter]);
 
   const getStatusBadge = (result: string) => {
     switch (result) {
@@ -118,16 +87,6 @@ export default function AuditLogs() {
     }
   };
 
-  const filteredLogs = auditLogs.filter(log => {
-    const matchesSearch = 
-      log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.ip.includes(searchTerm);
-    
-    const matchesStatus = statusFilter === "all" || log.result === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
 
   return (
     <div className="p-6 space-y-6">
@@ -179,7 +138,12 @@ export default function AuditLogs() {
             </Button>
           </div>
 
-          <Table>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Data/Hora</TableHead>
@@ -191,7 +155,7 @@ export default function AuditLogs() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLogs.map((log) => (
+              {auditLogs.map((log) => (
                 <TableRow key={log.id}>
                   <TableCell className="font-mono text-sm">
                     {log.timestamp}
@@ -215,16 +179,18 @@ export default function AuditLogs() {
               ))}
             </TableBody>
           </Table>
+          )}
 
-          {filteredLogs.length === 0 && (
+          {!loading && auditLogs.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               Nenhum log encontrado com os filtros aplicados.
             </div>
           )}
 
-          <div className="flex items-center justify-between mt-4 pt-4 border-t">
-            <p className="text-sm text-muted-foreground">
-              Exibindo {filteredLogs.length} de {auditLogs.length} registros
+          {!loading && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <p className="text-sm text-muted-foreground">
+                Exibindo {auditLogs.length} de {total} registros
             </p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm">
@@ -234,7 +200,8 @@ export default function AuditLogs() {
                 Próximo
               </Button>
             </div>
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

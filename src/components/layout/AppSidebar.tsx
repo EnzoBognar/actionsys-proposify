@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { 
   Users, 
@@ -12,6 +11,7 @@ import {
   Home
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 import {
   Sidebar,
@@ -39,6 +39,7 @@ const securityItems = [
 
 export function AppSidebar() {
   const { state } = useSidebar();
+  const { user } = useAuth();
   const location = useLocation();
   const currentPath = location.pathname;
   const isCollapsed = state === "collapsed";
@@ -50,6 +51,10 @@ export function AppSidebar() {
   const isActive = (path: string) => currentPath === path;
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-primary text-primary-foreground" : "hover:bg-accent";
+  
+  // Controle de visibilidade baseado em nav
+  const showSecuritySection = user?.nav?.sections?.security ?? false;
+  const showAuditItem = user?.nav?.items?.audit ?? false;
 
   return (
     <Sidebar className={isCollapsed ? "w-14" : "w-64"} collapsible="icon">
@@ -71,42 +76,50 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* Módulo de Segurança */}
-        <SidebarGroup>
-          <Collapsible 
-            open={securityOpen} 
-            onOpenChange={setSecurityOpen}
-            className="group/collapsible"
-          >
-            <SidebarGroupLabel asChild>
-              <CollapsibleTrigger className="flex w-full items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  {!isCollapsed && <span>Bancada de Segurança</span>}
-                </div>
-                {!isCollapsed && (
-                  <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
-                )}
-              </CollapsibleTrigger>
-            </SidebarGroupLabel>
-            
-            <CollapsibleContent>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {securityItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild>
-                        <NavLink to={item.url} className={getNavCls}>
-                          <item.icon className="h-4 w-4" />
-                          {!isCollapsed && <span>{item.title}</span>}
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </CollapsibleContent>
-          </Collapsible>
-        </SidebarGroup>
+        {showSecuritySection && (
+          <SidebarGroup>
+            <Collapsible 
+              open={securityOpen} 
+              onOpenChange={setSecurityOpen}
+              className="group/collapsible"
+            >
+              <SidebarGroupLabel asChild>
+                <CollapsibleTrigger className="flex w-full items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    {!isCollapsed && <span>Bancada de Segurança</span>}
+                  </div>
+                  {!isCollapsed && (
+                    <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                  )}
+                </CollapsibleTrigger>
+              </SidebarGroupLabel>
+              
+              <CollapsibleContent>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {securityItems.filter(item => {
+                      // Oculta "Auditoria e Logs" se audit === false
+                      if (item.url === "/auditoria-logs") {
+                        return showAuditItem;
+                      }
+                      return true;
+                    }).map((item) => (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild>
+                          <NavLink to={item.url} className={getNavCls}>
+                            <item.icon className="h-4 w-4" />
+                            {!isCollapsed && <span>{item.title}</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </CollapsibleContent>
+            </Collapsible>
+          </SidebarGroup>
+        )}
 
         {/* Propostas */}
         <SidebarGroup>

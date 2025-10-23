@@ -15,6 +15,24 @@ export interface UserData {
   status_user: string;
   data_ult_login?: string | null;
   url_avatar_user?: string | null;
+  roles: string[];
+  permissions: string[];
+  nav: {
+    roles: string[];
+    permissions: string[];
+    sections: {
+      dashboard: boolean;
+      proposals: boolean;
+      security: boolean;
+    };
+    items: {
+      users: boolean;
+      roles: boolean;
+      permissions: boolean;
+      audit: boolean;
+    };
+    default_route: string;
+  };
 }
 
 /**

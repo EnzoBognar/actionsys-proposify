@@ -9,6 +9,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { MfaProvider } from "@/contexts/MfaContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { PermissionGuard } from "@/components/auth/PermissionGuard";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -69,9 +70,11 @@ const App = () => (
           } />
           <Route path="/auditoria-logs" element={
             <ProtectedRoute>
-              <AppLayout>
-                <AuditLogs />
-              </AppLayout>
+              <PermissionGuard permission="audit.view">
+                <AppLayout>
+                  <AuditLogs />
+                </AppLayout>
+              </PermissionGuard>
             </ProtectedRoute>
           } />
           <Route path="/preferencias" element={

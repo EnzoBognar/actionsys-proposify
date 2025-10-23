@@ -9,6 +9,24 @@ export interface User {
   telefone?: string | null;
   status: string;
   url_avatar?: string | null;
+  roles: string[];
+  permissions: string[];
+  nav: {
+    roles: string[];
+    permissions: string[];
+    sections: {
+      dashboard: boolean;
+      proposals: boolean;
+      security: boolean;
+    };
+    items: {
+      users: boolean;
+      roles: boolean;
+      permissions: boolean;
+      audit: boolean;
+    };
+    default_route: string;
+  };
 }
 
 interface AuthContextType {
@@ -39,6 +57,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             telefone: userData.telefone_user,
             status: userData.status_user,
             url_avatar: userData.url_avatar_user,
+            roles: userData.roles,
+            permissions: userData.permissions,
+            nav: userData.nav,
           });
         } catch (error) {
           console.error("Error loading user:", error);
@@ -79,6 +100,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           telefone: userData.telefone_user,
           status: userData.status_user,
           url_avatar: userData.url_avatar_user,
+          roles: userData.roles,
+          permissions: userData.permissions,
+          nav: userData.nav,
         });
 
         if (rememberMe) {

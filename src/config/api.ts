@@ -38,6 +38,9 @@ export const API_CONFIG = {
     PERMISSION_STATUS: (id: number) => `/permissions/${id}/status`,
     PERMISSION_ROLES: (id: number) => `/permissions/${id}/roles`,
     PERMISSION_ROLE: (permId: number, perfilId: number) => `/permissions/${permId}/roles/${perfilId}`,
+    
+    // Auditoria
+    AUDIT_LOGS: "/auditoria/logs",
   }
 } as const;
 
