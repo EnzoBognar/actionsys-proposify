@@ -35,8 +35,8 @@ export default function AuditLogs() {
         q: searchTerm || undefined,
         status: statusFilter !== "all" ? statusFilter : undefined,
       });
-      setAuditLogs(response.logs);
-      setTotal(response.total);
+      setAuditLogs(response?.logs || []);
+      setTotal(response?.total || 0);
     } catch (error) {
       console.error("Error loading audit logs:", error);
       
@@ -56,6 +56,10 @@ export default function AuditLogs() {
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive",
       });
+      
+      // Garantir que auditLogs seja um array vazio em caso de erro
+      setAuditLogs([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -155,7 +159,7 @@ export default function AuditLogs() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {auditLogs.map((log) => (
+              {auditLogs?.map((log) => (
                 <TableRow key={log.id}>
                   <TableCell className="font-mono text-sm">
                     {log.timestamp}
