@@ -2,8 +2,9 @@
 import { API_CONFIG } from "@/config/api";
 
 export interface LoginResponse {
-  access_token: string;
-  token_type: string;
+  access_token?: string;
+  token_type?: string;
+  mfa_required?: boolean;
 }
 
 export interface UserData {

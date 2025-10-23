@@ -1,33 +1,30 @@
 import { useState, useEffect } from "react";
-import { Eye, EyeOff, Lock, Mail, ArrowRight } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
-import { MfaVerification } from "@/components/auth/MfaVerification";
+import { Eye, EyeOff, Loader2, UserPlus } from "lucide-react";
 import { ForgotPassword } from "@/components/auth/ForgotPassword";
-import { useNavigate } from "react-router-dom";
-import actionsysLogo from "@/assets/actionsys-logo.png";
+import logoActionSys from "@/assets/actionsys-logo.png";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [currentView, setCurrentView] = useState<'login' | 'mfa' | 'forgot'>('login');
+  const [currentView, setCurrentView] = useState<"login" | "forgot-password">("login");
   const [loading, setLoading] = useState(false);
   
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Redirect if already authenticated
     if (user) {
       navigate('/');
     }
 
-    // Load remembered email
     const rememberedEmail = localStorage.getItem('actionsys_remember_email');
     if (rememberedEmail) {
       setEmail(rememberedEmail);
@@ -38,44 +35,23 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    try {
-      const { error } = await signIn(email, password, rememberMe);
-      
-      if (!error) {
-        // For this demo, we'll simulate MFA for all users
-        // In production, this would check user's MFA preference
-        setCurrentView('mfa');
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-    } finally {
-      setLoading(false);
+    
+    const { error } = await signIn(email, password, rememberMe);
+    
+    if (!error) {
+      // Se o login retornar mfa_required, redireciona para verificação
+      // Caso contrário, o useAuth já redireciona automaticamente
     }
-  };
-
-  const handleMfaComplete = () => {
-    navigate('/');
-  };
-
-  const handleBackToLogin = () => {
-    setCurrentView('login');
+    
     setLoading(false);
   };
 
-  if (currentView === 'mfa') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
-        <MfaVerification
-          email={email}
-          onVerificationComplete={handleMfaComplete}
-          onBack={handleBackToLogin}
-        />
-      </div>
-    );
-  }
+  const handleBackToLogin = () => {
+    setCurrentView("login");
+    setLoading(false);
+  };
 
-  if (currentView === 'forgot') {
+  if (currentView === "forgot-password") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
         <ForgotPassword onBack={handleBackToLogin} />
@@ -84,110 +60,117 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-strong">
-        <CardContent className="p-8">
-          <div className="text-center space-y-6">
-            {/* Logo */}
-            <div className="flex justify-center">
-              <img 
-                src={actionsysLogo} 
-                alt="Actionsys Logo" 
-                className="h-16 w-auto object-contain"
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-4">
+          <div className="flex justify-center">
+            <img 
+              src={logoActionSys} 
+              alt="Actionsys Logo" 
+              className="h-16 object-contain"
+            />
+          </div>
+          <div className="text-center">
+            <CardTitle className="text-2xl">Bem-vindo</CardTitle>
+            <CardDescription>
+              Actionsys Proposal Manager
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Input
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+                required
               />
             </div>
 
-            {/* Title */}
-            <div className="space-y-2">
-              <h1 className="text-2xl font-bold text-foreground">
-                Actionsys Proposal Manager
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Sistema de Gerenciamento de Propostas – acesso restrito a usuários cadastrados.
-              </p>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email Field */}
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="email"
-                  placeholder="seu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
-              </div>
-
-              {/* Password Field */}
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Digite sua senha"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-
-              {/* Remember Me */}
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="remember"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-                />
-                <label
-                  htmlFor="remember"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Lembrar-me
-                </label>
-              </div>
-
-              {/* Login Button */}
-              <Button 
-                type="submit" 
-                className="w-full bg-actionsys-blue hover:bg-actionsys-blue/90 text-white"
+            <div className="space-y-2 relative">
+              <Input
+                type={showPassword ? "text" : "password"}
+                placeholder="Digite sua senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
-              >
-                {loading ? "Entrando..." : (
-                  <>
-                    Fazer Login
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </>
-                )}
-              </Button>
-            </form>
-
-            {/* Forgot Password Link */}
-            <div className="text-center">
-              <button 
+                required
+              />
+              <button
                 type="button"
-                onClick={() => setCurrentView('forgot')}
-                className="text-primary hover:text-primary/80 text-sm font-medium"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
               >
-                Esqueci minha senha
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
               </button>
             </div>
 
-          </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="remember"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+              />
+              <label
+                htmlFor="remember"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Lembrar-me
+              </label>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Entrando...
+                </>
+              ) : (
+                "Fazer Login"
+              )}
+            </Button>
+
+            <div className="flex flex-col gap-2 text-center text-sm">
+              <button
+                type="button"
+                onClick={() => setCurrentView("forgot-password")}
+                className="text-primary hover:underline"
+              >
+                Esqueceu a senha?
+              </button>
+              
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">Ou</span>
+                </div>
+              </div>
+
+              <Link to="/register">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                >
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Registrar-se
+                </Button>
+              </Link>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>

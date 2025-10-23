@@ -55,30 +55,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await authService.login(email, password);
       
-      // Salva o token
-      localStorage.setItem("access_token", response.access_token);
-
-      // Carrega os dados do usuário
-      const userData = await authService.getCurrentUser();
-      setUser({
-        id: userData.id_user,
-        email: userData.email_user,
-        nome: userData.nome_user,
-        telefone: userData.telefone_user,
-        status: userData.status_user,
-        url_avatar: userData.url_avatar_user,
-      });
-
-      if (rememberMe) {
-        localStorage.setItem('actionsys_remember_email', email);
-      } else {
-        localStorage.removeItem('actionsys_remember_email');
+      // Verifica se precisa de MFA
+      if (response.mfa_required) {
+        toast({
+          title: "Verificação necessária",
+          description: "Complete a verificação MFA para continuar",
+        });
+        // Redireciona para verificação MFA
+        window.location.href = `/mfa-verify?email=${encodeURIComponent(email)}`;
+        return { error: null };
       }
 
-      toast({
-        title: "Login realizado com sucesso!",
-        description: "Bem-vindo ao Actionsys Proposal Manager",
-      });
+      // Se não precisa de MFA, salva o token
+      if (response.access_token) {
+        localStorage.setItem("access_token", response.access_token);
+
+        // Carrega os dados do usuário
+        const userData = await authService.getCurrentUser();
+        setUser({
+          id: userData.id_user,
+          email: userData.email_user,
+          nome: userData.nome_user,
+          telefone: userData.telefone_user,
+          status: userData.status_user,
+          url_avatar: userData.url_avatar_user,
+        });
+
+        if (rememberMe) {
+          localStorage.setItem('actionsys_remember_email', email);
+        } else {
+          localStorage.removeItem('actionsys_remember_email');
+        }
+
+        toast({
+          title: "Login realizado com sucesso!",
+          description: "Bem-vindo ao Actionsys Proposal Manager",
+        });
+      }
 
       return { error: null };
     } catch (error) {

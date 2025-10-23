@@ -11,6 +11,8 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
+import MfaVerify from "./pages/MfaVerify";
 import NotFound from "./pages/NotFound";
 import Users from "./pages/security/Users";
 import Profiles from "./pages/security/Profiles";
@@ -35,6 +37,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/mfa-verify" element={<MfaVerify />} />
           <Route path="/dashboard-seguranca" element={
             <ProtectedRoute>
               <AppLayout>

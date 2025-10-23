@@ -19,6 +19,19 @@ export async function getUsuario(id: number) {
   return await api.get<Usuario>(`/usuarios/${id}`);
 }
 
+/**
+ * Cria um novo usuário (pré-registro com status "P")
+ * Backend envia código por e-mail automaticamente
+ */
+export async function registerUsuario(input: {
+  nome_user?: string | null;
+  email_user: string;
+  telefone_user?: string | null;
+  senha_user: string;
+}) {
+  return await api.post("/usuarios/", input);
+}
+
 export async function createUsuario(input: {
   nome_user?: string;
   email_user: string;

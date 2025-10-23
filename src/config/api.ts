@@ -4,7 +4,7 @@
  */
 
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "http://localhost:8000",
+  BASE_URL: (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL)?.replace(/\/$/, "") || "http://localhost:8000",
   
   ENDPOINTS: {
     // System
@@ -14,9 +14,13 @@ export const API_CONFIG = {
     LOGIN: "/auth/login",
     LOGOUT: "/auth/logout",
     ME: "/auth/me",
+    MFA_VERIFY: "/auth/mfa/verify",
+    MFA_SEND: "/auth/mfa/send",
+    MFA_PREFERENCE: "/auth/mfa/preference",
     
     // Usuários
     USUARIOS: "/usuarios",
+    USUARIOS_CREATE: "/usuarios/",
     USUARIO_BY_ID: (id: number) => `/usuarios/${id}`,
     USUARIO_APPROVE: (id: number) => `/usuarios/${id}/approve`,
     USUARIOS_HOUSEKEEPING: "/usuarios/housekeeping",
