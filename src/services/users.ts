@@ -38,3 +38,19 @@ export async function updateUsuario(
 export async function deleteUsuario(id: number) {
   await api.delete(`/usuarios/${id}`);
 }
+
+/**
+ * Adiciona um perfil a um usuário
+ * (internamente usa POST /roles/{perfilId}/users)
+ */
+export async function addRoleToUser(userId: number, perfilId: number) {
+  await api.post(`/roles/${perfilId}/users`, { id_user: userId });
+}
+
+/**
+ * Remove um perfil de um usuário
+ * (internamente usa DELETE /roles/{perfilId}/users/{userId})
+ */
+export async function removeRoleFromUser(userId: number, perfilId: number) {
+  await api.delete(`/roles/${perfilId}/users/${userId}`);
+}

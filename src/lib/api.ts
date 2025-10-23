@@ -13,10 +13,24 @@ async function request<T>(path: string, method: HttpMethod, body?: unknown): Pro
     },
     body: body ? JSON.stringify(body) : undefined,
   });
+  
   if (!res.ok) {
+    // 401 Unauthorized - redirecionar para login
+    if (res.status === 401) {
+      localStorage.removeItem("access_token");
+      window.location.href = "/login";
+      throw new Error("Sessão expirada. Por favor, faça login novamente.");
+    }
+    
+    // 403 Forbidden - permissão insuficiente
+    if (res.status === 403) {
+      throw new Error("Permissão insuficiente para realizar esta ação.");
+    }
+    
     const detail = await res.text().catch(() => "");
     throw new Error(detail || `HTTP ${res.status}`);
   }
+  
   // 204 No Content
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;

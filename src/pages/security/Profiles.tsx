@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Search, Edit, Trash2, Eye, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,99 +31,95 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+import {
+  listPerfis,
+  getPerfil,
+  createPerfil,
+  patchPerfil,
+  setPerfilStatus,
+  suspendPerfil,
+  type PerfilRead,
+  type PerfilWithUsersRead,
+} from "@/services/roles";
 
 interface Profile {
   id: number;
   name: string;
   description: string;
-  status: 'ativo' | 'inativo';
+  status: 'ativo' | 'inativo' | 'suspenso';
   userCount: number;
-  createdAt: string;
   updatedAt: string;
-  permissions: string[];
+  userIds?: number[];
 }
 
-const mockProfiles: Profile[] = [
-  {
-    id: 1,
-    name: "Administrador",
-    description: "Acesso total ao sistema",
-    status: "ativo",
-    userCount: 2,
-    createdAt: "2024-01-01 10:00:00",
-    updatedAt: "2024-01-01 10:00:00",
-    permissions: [
-      "Gerenciar usuários",
-      "Gerenciar perfis",
-      "Gerenciar permissões",
-      "Criar propostas",
-      "Editar propostas",
-      "Arquivar propostas",
-      "Ver valores monetários",
-      "Ver relatórios",
-      "Ver atividades de outros usuários",
-      "Configurações do sistema"
-    ]
-  },
-  {
-    id: 2,
-    name: "Gerente",
-    description: "Gerenciamento de propostas e equipes",
-    status: "ativo", 
-    userCount: 5,
-    createdAt: "2024-01-01 10:00:00",
-    updatedAt: "2024-01-05 14:30:00",
-    permissions: [
-      "Gerenciar usuários",
-      "Criar propostas",
-      "Editar propostas",
-      "Arquivar propostas",
-      "Ver valores monetários",
-      "Ver relatórios",
-      "Ver atividades de outros usuários",
-      "Aprovar propostas de analistas"
-    ]
-  },
-  {
-    id: 3,
-    name: "Analista",
-    description: "Criação e edição de propostas",
-    status: "ativo",
-    userCount: 12,
-    createdAt: "2024-01-01 10:00:00",
-    updatedAt: "2024-01-10 09:15:00",
-    permissions: [
-      "Criar propostas",
-      "Ver próprias propostas",
-      "Editar próprias propostas"
-    ]
-  },
-  {
-    id: 4,
-    name: "Consultor",
-    description: "Visualização de propostas",
-    status: "inativo",
-    userCount: 0,
-    createdAt: "2024-01-01 10:00:00",
-    updatedAt: "2024-01-12 16:45:00",
-    permissions: [
-      "Ver propostas",
-      "Ver relatórios básicos"
-    ]
-  }
-];
+const statusMap: Record<string, Profile['status']> = {
+  'A': 'ativo',
+  'I': 'inativo',
+  'S': 'suspenso',
+};
+
+const apiToUiProfile = (p: PerfilRead, userIds?: number[]): Profile => ({
+  id: p.id_perfil,
+  name: p.desc_perfil,
+  description: p.desc_perfil,
+  status: statusMap[p.status_perfil] || 'inativo',
+  userCount: userIds?.length || 0,
+  updatedAt: p.data_status,
+  userIds,
+});
 
 export default function Profiles() {
-  const [profiles, setProfiles] = useState<Profile[]>(mockProfiles);
+  const { toast } = useToast();
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
+
+  // Form states
+  const [newName, setNewName] = useState("");
+  const [newDescription, setNewDescription] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+
+  const loadProfiles = async () => {
+    try {
+      setLoading(true);
+      const data = await listPerfis();
+      
+      // Buscar detalhes de cada perfil para obter user_ids
+      const profilesWithUsers = await Promise.all(
+        data.map(async (p) => {
+          try {
+            const details = await getPerfil(p.id_perfil);
+            return apiToUiProfile(p, details.user_ids);
+          } catch {
+            return apiToUiProfile(p, []);
+          }
+        })
+      );
+      
+      setProfiles(profilesWithUsers);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar perfis",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadProfiles();
+  }, []);
 
   const filteredProfiles = profiles.filter(profile =>
     profile.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -133,7 +129,8 @@ export default function Profiles() {
   const getStatusBadge = (status: string) => {
     const variants = {
       ativo: "default",
-      inativo: "secondary"
+      inativo: "secondary",
+      suspenso: "destructive"
     } as const;
 
     return (
@@ -150,6 +147,8 @@ export default function Profiles() {
 
   const handleEdit = (profile: Profile) => {
     setSelectedProfile(profile);
+    setEditName(profile.name);
+    setEditDescription(profile.description);
     setIsEditDialogOpen(true);
   };
 
@@ -158,28 +157,122 @@ export default function Profiles() {
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (selectedProfile) {
-      setProfiles(profiles.filter(p => p.id !== selectedProfile.id));
+  const confirmDelete = async () => {
+    if (!selectedProfile) return;
+    
+    try {
+      await suspendPerfil(selectedProfile.id);
+      toast({
+        title: "Perfil suspenso com sucesso",
+        description: "O perfil foi suspenso e não está mais disponível.",
+      });
       setIsDeleteDialogOpen(false);
       setSelectedProfile(null);
-    }
-  };
-
-  const toggleProfileStatus = () => {
-    if (selectedProfile) {
-      const updatedProfiles = profiles.map(p => 
-        p.id === selectedProfile.id 
-          ? { ...p, status: p.status === 'ativo' ? 'inativo' as const : 'ativo' as const }
-          : p
-      );
-      setProfiles(updatedProfiles);
-      setSelectedProfile({
-        ...selectedProfile,
-        status: selectedProfile.status === 'ativo' ? 'inativo' : 'ativo'
+      await loadProfiles();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao suspender perfil",
+        description: error.message,
+        variant: "destructive",
       });
     }
   };
+
+  const toggleProfileStatus = async () => {
+    if (!selectedProfile) return;
+    
+    const newStatus = selectedProfile.status === 'ativo' ? 'I' : 'A';
+    
+    try {
+      await setPerfilStatus(selectedProfile.id, newStatus);
+      await loadProfiles();
+      
+      const updatedProfile = {
+        ...selectedProfile,
+        status: newStatus === 'A' ? 'ativo' as const : 'inativo' as const
+      };
+      setSelectedProfile(updatedProfile);
+      
+      toast({
+        title: "Status atualizado",
+        description: `Perfil ${newStatus === 'A' ? 'ativado' : 'inativado'} com sucesso.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao atualizar status",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreateProfile = async () => {
+    if (!newName.trim()) {
+      toast({
+        title: "Erro",
+        description: "O nome do perfil é obrigatório",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createPerfil({
+        desc_perfil: newName,
+        status_perfil: "A"
+      });
+      
+      toast({
+        title: "Perfil criado com sucesso",
+        description: "O novo perfil foi adicionado ao sistema.",
+      });
+      
+      setNewName("");
+      setNewDescription("");
+      setIsDialogOpen(false);
+      await loadProfiles();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao criar perfil",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedProfile || !editName.trim()) {
+      toast({
+        title: "Erro",
+        description: "O nome do perfil é obrigatório",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await patchPerfil(selectedProfile.id, {
+        desc_perfil: editName
+      });
+      
+      toast({
+        title: "Perfil atualizado",
+        description: "As alterações foram salvas com sucesso.",
+      });
+      
+      setIsEditDialogOpen(false);
+      await loadProfiles();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao atualizar perfil",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const activeProfiles = profiles.filter(p => p.status === 'ativo');
+  const totalUsers = profiles.reduce((acc, p) => acc + p.userCount, 0);
 
   return (
     <div className="space-y-6">
@@ -209,7 +302,12 @@ export default function Profiles() {
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome do Perfil</Label>
-                <Input id="name" placeholder="Digite o nome do perfil" />
+                <Input
+                  id="name"
+                  placeholder="Digite o nome do perfil"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                />
               </div>
               
               <div className="space-y-2">
@@ -218,20 +316,9 @@ export default function Profiles() {
                   id="description" 
                   placeholder="Descreva as responsabilidades deste perfil"
                   className="resize-none"
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
                 />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ativo">Ativo</SelectItem>
-                    <SelectItem value="inativo">Inativo</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
             
@@ -239,7 +326,7 @@ export default function Profiles() {
               <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button onClick={() => setIsDialogOpen(false)}>
+              <Button onClick={handleCreateProfile}>
                 Salvar Perfil
               </Button>
             </div>
@@ -261,10 +348,10 @@ export default function Profiles() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Perfis Ativos</CardTitle>
-            <Badge variant="default">{profiles.filter(p => p.status === 'ativo').length}</Badge>
+            <Badge variant="default">{activeProfiles.length}</Badge>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{profiles.filter(p => p.status === 'ativo').length}</div>
+            <div className="text-2xl font-bold">{activeProfiles.length}</div>
           </CardContent>
         </Card>
         
@@ -274,7 +361,7 @@ export default function Profiles() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{profiles.reduce((acc, p) => acc + p.userCount, 0)}</div>
+            <div className="text-2xl font-bold">{totalUsers}</div>
           </CardContent>
         </Card>
       </div>
@@ -283,7 +370,7 @@ export default function Profiles() {
         <CardHeader>
           <CardTitle>Lista de Perfis</CardTitle>
           <CardDescription>
-            Gerencie os perfis de acesso e suas permissões
+            {loading ? "Carregando..." : "Gerencie os perfis de acesso e suas permissões"}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -349,19 +436,26 @@ export default function Profiles() {
                      </TableCell>
                   </TableRow>
                 ))}
+                {!loading && filteredProfiles.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                      Nenhum perfil encontrado.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
 
-      {/* Dialog para visualizar permissões */}
+      {/* Dialog para visualizar perfil */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Permissões do Perfil</DialogTitle>
+            <DialogTitle>Detalhes do Perfil</DialogTitle>
             <DialogDescription>
-              Visualize todas as permissões do perfil {selectedProfile?.name}
+              Visualize as informações do perfil {selectedProfile?.name}
             </DialogDescription>
           </DialogHeader>
           
@@ -385,16 +479,8 @@ export default function Profiles() {
             </div>
             
             <div>
-              <Label className="text-sm font-medium">Permissões</Label>
-              <div className="mt-2 grid grid-cols-1 gap-2">
-                {selectedProfile?.permissions.map((permission, index) => (
-                  <div key={index} className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
-                    <Badge variant="outline" className="text-xs">
-                      {permission}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+              <Label className="text-sm font-medium">Usuários Vinculados</Label>
+              <p className="text-sm text-muted-foreground">{selectedProfile?.userCount} usuário(s)</p>
             </div>
           </div>
           
@@ -421,7 +507,8 @@ export default function Profiles() {
               <Label htmlFor="edit-name">Nome do Perfil</Label>
               <Input 
                 id="edit-name" 
-                defaultValue={selectedProfile?.name}
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
                 placeholder="Digite o nome do perfil" 
               />
             </div>
@@ -430,7 +517,8 @@ export default function Profiles() {
               <Label htmlFor="edit-description">Descrição</Label>
               <Textarea 
                 id="edit-description" 
-                defaultValue={selectedProfile?.description}
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
                 placeholder="Descreva as responsabilidades deste perfil"
                 className="resize-none"
               />
@@ -454,7 +542,7 @@ export default function Profiles() {
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={() => setIsEditDialogOpen(false)}>
+            <Button onClick={handleSaveEdit}>
               Salvar Alterações
             </Button>
           </div>
@@ -465,10 +553,10 @@ export default function Profiles() {
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogTitle>Confirmar Suspensão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir o perfil "{selectedProfile?.name}"? 
-              Esta ação não pode ser desfeita e pode afetar {selectedProfile?.userCount} usuário(s) vinculado(s) a este perfil.
+              Tem certeza que deseja suspender o perfil "{selectedProfile?.name}"? 
+              Esta ação pode afetar {selectedProfile?.userCount} usuário(s) vinculado(s) a este perfil.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -477,7 +565,7 @@ export default function Profiles() {
               onClick={confirmDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Excluir Perfil
+              Suspender Perfil
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

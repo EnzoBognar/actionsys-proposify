@@ -23,16 +23,21 @@ import {
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 import {
   listUsuarios,
-  getUsuario,
   createUsuario,
   updateUsuario,
   deleteUsuario,
+  addRoleToUser,
+  removeRoleFromUser,
   type Usuario
-} from "../../services/users"; // ajuste o caminho se necessário
+} from "@/services/users";
+import {
+  listPerfis,
+  type PerfilRead
+} from "@/services/roles";
 
-// --- Tipos locais (UI) ---
 interface Profile {
   id: number;
   name: string;
@@ -47,17 +52,9 @@ interface User {
   status: 'ativo' | 'inativo' | 'bloqueado' | 'cancelado' | 'pre-registro' | 'visitante';
   lastLogin: string | null;
   createdAt: string | null;
-  profiles: Profile[]; // mock (não integrado ainda)
+  profileIds: number[];
 }
 
-// --- Mocks de perfis (mantidos só para UI local) ---
-const mockProfiles: Profile[] = [
-  { id: 1, name: "Administrador", description: "Acesso total ao sistema" },
-  { id: 2, name: "Gerente", description: "Gerenciamento de equipes e projetos" },
-  { id: 3, name: "Consultor / Analista", description: "Criação e análise de propostas" }
-];
-
-// --- Helpers de mapeamento ---
 const statusCodeToUi = (code?: string): User["status"] => {
   switch ((code || "P").toUpperCase()) {
     case "A": return "ativo";
@@ -77,65 +74,79 @@ const apiToUiUser = (u: Usuario): User => ({
   phone: u.telefone_user ?? "",
   status: statusCodeToUi(u.status_user),
   lastLogin: u.data_ult_login ?? null,
-  createdAt: (u as any).data_cadastro ?? null, // o schema Read expõe data_cadastro
-  profiles: [] // não integrado ainda
+  createdAt: (u as any).data_cadastro ?? null,
+  profileIds: [],
+});
+
+const apiToUiProfile = (p: PerfilRead): Profile => ({
+  id: p.id_perfil,
+  name: p.desc_perfil,
+  description: p.desc_perfil,
 });
 
 export default function Users() {
-  // estado principal
+  const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
+  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // busca
   const [searchTerm, setSearchTerm] = useState("");
 
-  // dialogs
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  // seleção e perfis (mock)
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [selectedProfiles, setSelectedProfiles] = useState<Profile[]>([]);
+  const [selectedProfileIds, setSelectedProfileIds] = useState<number[]>([]);
 
-  // form - novo usuário
+  // Form - novo usuário
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newPassword2, setNewPassword2] = useState("");
-  // status no create não é enviado para o backend (mantemos a UI mas ignoramos no submit)
-  const [newStatusUi, setNewStatusUi] = useState<User["status"] | undefined>(undefined);
 
-  // form - edição
+  // Form - edição
   const [editName, setEditName] = useState("");
-  const [editEmail, setEditEmail] = useState(""); // desabilitado (não editamos e-mail no backend)
+  const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
-  const [editAvatar, setEditAvatar] = useState("");
-  // status no edit NÃO é enviado
-  const [editStatusUi, setEditStatusUi] = useState<User["status"] | undefined>(undefined);
 
-  // carregar lista
-  const load = async () => {
+  const loadUsers = async () => {
     try {
       setLoading(true);
-      setErrorMsg(null);
       const data = await listUsuarios();
       const mapped = data.map(apiToUiUser);
       setUsers(mapped);
-    } catch (e: any) {
-      setErrorMsg(e?.response?.data?.detail || "Erro ao carregar usuários");
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar usuários",
+        description: error.message,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  const loadProfiles = async () => {
+    try {
+      const data = await listPerfis({ status: "A" });
+      const mapped = data.map(apiToUiProfile);
+      setAllProfiles(mapped);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar perfis",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
-    load();
+    loadUsers();
+    loadProfiles();
   }, []);
 
-  // filtros
   const filteredUsers = useMemo(() => {
     const term = searchTerm.toLowerCase().trim();
     if (!term) return users;
@@ -144,7 +155,6 @@ export default function Users() {
     );
   }, [users, searchTerm]);
 
-  // dialogs actions
   const handleViewUser = (user: User) => {
     setSelectedUser(user);
     setIsViewDialogOpen(true);
@@ -152,48 +162,59 @@ export default function Users() {
 
   const handleEditUser = (user: User) => {
     setSelectedUser(user);
-    setSelectedProfiles(user.profiles);
-    // preencher formulário
+    setSelectedProfileIds(user.profileIds);
     setEditName(user.name);
     setEditEmail(user.email);
     setEditPhone(user.phone);
-    setEditAvatar("");
-    setEditStatusUi(user.status); // somente visual
     setIsEditDialogOpen(true);
   };
 
-  const handleProfileToggle = (profile: Profile, checked: boolean) => {
-    if (checked) {
-      setSelectedProfiles(prev => [...prev, profile]);
-    } else {
-      setSelectedProfiles(prev => prev.filter(p => p.id !== profile.id));
+  const handleProfileToggle = async (profileId: number, checked: boolean) => {
+    if (!selectedUser) return;
+
+    try {
+      if (checked) {
+        await addRoleToUser(selectedUser.id, profileId);
+        setSelectedProfileIds(prev => [...prev, profileId]);
+        toast({
+          title: "Perfil adicionado",
+          description: "O perfil foi vinculado ao usuário com sucesso.",
+        });
+      } else {
+        await removeRoleFromUser(selectedUser.id, profileId);
+        setSelectedProfileIds(prev => prev.filter(id => id !== profileId));
+        toast({
+          title: "Perfil removido",
+          description: "O perfil foi desvinculado do usuário com sucesso.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro ao atualizar perfil",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
-  const addNewProfile = () => {
-    const availableProfiles = mockProfiles.filter(
-      profile => !selectedProfiles.some(sp => sp.id === profile.id)
-    );
-    if (availableProfiles.length > 0) {
-      setSelectedProfiles(prev => [...prev, availableProfiles[0]]);
-    }
-  };
-
-  const saveUserProfiles = async () => {
-    // Aqui o backend ainda não recebe perfis, então apenas fecha modal
-    setIsEditDialogOpen(false);
-  };
-
-  // criar usuário
   const handleCreateUser = async () => {
     if (!newEmail || !newPassword) {
-      alert("E-mail e senha são obrigatórios.");
+      toast({
+        title: "Erro",
+        description: "E-mail e senha são obrigatórios.",
+        variant: "destructive",
+      });
       return;
     }
     if (newPassword !== newPassword2) {
-      alert("As senhas não conferem.");
+      toast({
+        title: "Erro",
+        description: "As senhas não conferem.",
+        variant: "destructive",
+      });
       return;
     }
+    
     try {
       await createUsuario({
         nome_user: newName || undefined,
@@ -201,46 +222,69 @@ export default function Users() {
         telefone_user: newPhone || undefined,
         senha_user: newPassword,
       });
-      // limpar form e fechar
+      
+      toast({
+        title: "Usuário criado com sucesso",
+        description: "O novo usuário foi adicionado ao sistema.",
+      });
+      
       setNewName("");
       setNewEmail("");
       setNewPhone("");
       setNewPassword("");
       setNewPassword2("");
-      setNewStatusUi(undefined);
       setIsDialogOpen(false);
-      // recarregar
-      await load();
-    } catch (e: any) {
-      alert(e?.response?.data?.detail || "Erro ao criar usuário");
+      await loadUsers();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao criar usuário",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
-  // excluir usuário
   const handleDeleteUser = async (user: User) => {
     if (!confirm(`Excluir o usuário ${user.name || user.email}?`)) return;
+    
     try {
       await deleteUsuario(user.id);
-      await load();
-    } catch (e: any) {
-      alert(e?.response?.data?.detail || "Erro ao excluir usuário");
+      toast({
+        title: "Usuário excluído",
+        description: "O usuário foi removido do sistema.",
+      });
+      await loadUsers();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir usuário",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
-  // editar usuário
   const handleSaveEdit = async () => {
     if (!selectedUser) return;
+    
     try {
       await updateUsuario(selectedUser.id, {
         nome_user: editName || undefined,
         telefone_user: editPhone || undefined,
-        url_avatar_user: editAvatar || undefined,
-        // status_user NÃO é enviado no PATCH
       });
+      
+      toast({
+        title: "Usuário atualizado",
+        description: "As alterações foram salvas com sucesso.",
+      });
+      
       setIsEditDialogOpen(false);
-      await load();
-    } catch (e: any) {
-      alert(e?.response?.data?.detail || "Erro ao salvar alterações");
+      await loadUsers();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao salvar alterações",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -268,6 +312,10 @@ export default function Users() {
         {labels[status as keyof typeof labels]}
       </Badge>
     );
+  };
+
+  const getUserProfiles = (profileIds: number[]) => {
+    return allProfiles.filter(p => profileIds.includes(p.id));
   };
 
   return (
@@ -323,28 +371,6 @@ export default function Users() {
                 />
               </div>
 
-              {/* Status NÃO é enviado no POST; mantido apenas visual */}
-              <div className="space-y-2 opacity-60">
-                <Label htmlFor="status">Status (somente visual)</Label>
-                <Select
-                  value={newStatusUi}
-                  onValueChange={(v) => setNewStatusUi(v as User["status"])}
-                  disabled
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Pré-Registro" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pre-registro">Pré-Registro (default)</SelectItem>
-                    <SelectItem value="ativo">Ativo</SelectItem>
-                    <SelectItem value="inativo">Inativo</SelectItem>
-                    <SelectItem value="bloqueado">Bloqueado</SelectItem>
-                    <SelectItem value="cancelado">Cancelado</SelectItem>
-                    <SelectItem value="visitante">Visitante</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="password">Senha</Label>
                 <Input
@@ -385,7 +411,6 @@ export default function Users() {
           <CardTitle>Lista de Usuários</CardTitle>
           <CardDescription>
             {loading ? "Carregando..." : `Total de ${users.length} usuários cadastrados`}
-            {errorMsg && <span className="text-red-600 ml-2">{errorMsg}</span>}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -507,11 +532,14 @@ export default function Users() {
               <div className="col-span-2 space-y-2">
                 <Label>Perfis Atribuídos</Label>
                 <div className="flex flex-wrap gap-2">
-                  {selectedUser.profiles.map((profile) => (
+                  {getUserProfiles(selectedUser.profileIds).map((profile) => (
                     <Badge key={profile.id} variant="secondary">
                       {profile.name}
                     </Badge>
                   ))}
+                  {selectedUser.profileIds.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Nenhum perfil atribuído</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -553,11 +581,11 @@ export default function Users() {
                     id="editEmail"
                     type="email"
                     value={editEmail}
-                    disabled // e-mail não é editável no backend atual
+                    disabled
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 col-span-2">
                   <Label htmlFor="editPhone">Telefone</Label>
                   <Input
                     id="editPhone"
@@ -565,48 +593,18 @@ export default function Users() {
                     onChange={(e) => setEditPhone(e.target.value)}
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="editStatus">Status</Label>
-                  <Select value={editStatusUi} disabled>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pre-registro">Pré-Registro</SelectItem>
-                      <SelectItem value="ativo">Ativo</SelectItem>
-                      <SelectItem value="inativo">Inativo</SelectItem>
-                      <SelectItem value="bloqueado">Bloqueado</SelectItem>
-                      <SelectItem value="cancelado">Cancelado</SelectItem>
-                      <SelectItem value="visitante">Visitante</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
 
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Perfis do Usuário</Label>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={addNewProfile}
-                    className="gap-1"
-                  >
-                    <Plus className="h-3 w-3" />
-                    Adicionar Perfil
-                  </Button>
-                </div>
-
+                <Label>Perfis do Usuário</Label>
                 <div className="space-y-2 border rounded-lg p-3">
-                  {mockProfiles.map((profile) => (
+                  {allProfiles.map((profile) => (
                     <div key={profile.id} className="flex items-center space-x-3">
                       <Checkbox
                         id={`profile-${profile.id}`}
-                        checked={selectedProfiles.some(sp => sp.id === profile.id)}
+                        checked={selectedProfileIds.includes(profile.id)}
                         onCheckedChange={(checked) =>
-                          handleProfileToggle(profile, checked as boolean)
+                          handleProfileToggle(profile.id, checked as boolean)
                         }
                       />
                       <div className="flex-1">
@@ -622,6 +620,11 @@ export default function Users() {
                       </div>
                     </div>
                   ))}
+                  {allProfiles.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      Nenhum perfil disponível
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
