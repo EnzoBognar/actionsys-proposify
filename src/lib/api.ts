@@ -1,7 +1,7 @@
 // src/lib/api.ts
 type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
-const BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
+const BASE = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") || "";
 
 async function request<T>(path: string, method: HttpMethod, body?: unknown): Promise<T> {
   const token = localStorage.getItem("access_token");
