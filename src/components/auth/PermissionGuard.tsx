@@ -6,12 +6,14 @@ import { useToast } from "@/hooks/use-toast";
 interface PermissionGuardProps {
   children: React.ReactNode;
   permission: string;
+  navItem?: 'users' | 'roles' | 'permissions' | 'audit';
   redirectTo?: string;
 }
 
 export function PermissionGuard({ 
   children, 
-  permission, 
+  permission,
+  navItem,
   redirectTo = "/dashboard" 
 }: PermissionGuardProps) {
   const { user, loading } = useAuth();
@@ -20,9 +22,17 @@ export function PermissionGuard({
 
   useEffect(() => {
     if (!loading && user) {
+      // Verificar nav.items se fornecido
+      let hasAccess = true;
+      
+      if (navItem && user.nav?.items) {
+        hasAccess = user.nav.items[navItem] === true;
+      }
+      
+      // Verificar permissão
       const hasPermission = user.permissions?.includes(permission);
       
-      if (!hasPermission) {
+      if (!hasAccess || !hasPermission) {
         toast({
           title: "Acesso negado",
           description: "Você não tem permissão para acessar esta página.",
@@ -31,7 +41,7 @@ export function PermissionGuard({
         navigate(redirectTo);
       }
     }
-  }, [user, loading, permission, navigate, redirectTo, toast]);
+  }, [user, loading, permission, navItem, navigate, redirectTo, toast]);
 
   if (loading) {
     return (
@@ -41,9 +51,15 @@ export function PermissionGuard({
     );
   }
 
+  // Verificar nav.items se fornecido
+  let hasAccess = true;
+  if (navItem && user?.nav?.items) {
+    hasAccess = user.nav.items[navItem] === true;
+  }
+  
   const hasPermission = user?.permissions?.includes(permission);
 
-  if (!hasPermission) {
+  if (!hasAccess || !hasPermission) {
     return null;
   }
 

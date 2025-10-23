@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,8 +29,9 @@ import {
   createUsuario,
   updateUsuario,
   deleteUsuario,
-  addRoleToUser,
-  removeRoleFromUser,
+  getUserRoles,
+  addRoleToUserDirect,
+  removeRoleFromUserDirect,
   type Usuario
 } from "@/services/users";
 import {
@@ -89,6 +90,7 @@ export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [loadingRoles, setLoadingRoles] = useState<boolean>(false);
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -98,6 +100,7 @@ export default function Users() {
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedProfileIds, setSelectedProfileIds] = useState<number[]>([]);
+  const [selectedProfileForAdd, setSelectedProfileForAdd] = useState<string>("");
 
   // Form - novo usuário
   const [newName, setNewName] = useState("");
@@ -155,42 +158,83 @@ export default function Users() {
     );
   }, [users, searchTerm]);
 
-  const handleViewUser = (user: User) => {
-    setSelectedUser(user);
-    setIsViewDialogOpen(true);
+  const loadUserRoles = async (userId: number) => {
+    try {
+      setLoadingRoles(true);
+      const roles = await getUserRoles(userId);
+      const roleIds = roles.map(r => r.id_perfil);
+      setSelectedProfileIds(roleIds);
+      
+      // Atualizar o usuário selecionado com os papéis carregados
+      if (selectedUser && selectedUser.id === userId) {
+        setSelectedUser({ ...selectedUser, profileIds: roleIds });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar papéis",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingRoles(false);
+    }
   };
 
-  const handleEditUser = (user: User) => {
+  const handleViewUser = async (user: User) => {
     setSelectedUser(user);
-    setSelectedProfileIds(user.profileIds);
+    setSelectedProfileIds([]);
+    setIsViewDialogOpen(true);
+    await loadUserRoles(user.id);
+  };
+
+  const handleEditUser = async (user: User) => {
+    setSelectedUser(user);
+    setSelectedProfileIds([]);
+    setSelectedProfileForAdd("");
     setEditName(user.name);
     setEditEmail(user.email);
     setEditPhone(user.phone);
     setIsEditDialogOpen(true);
+    await loadUserRoles(user.id);
   };
 
-  const handleProfileToggle = async (profileId: number, checked: boolean) => {
-    if (!selectedUser) return;
+  const handleAddRole = async () => {
+    if (!selectedUser || !selectedProfileForAdd) return;
 
+    const perfilId = parseInt(selectedProfileForAdd);
+    
     try {
-      if (checked) {
-        await addRoleToUser(selectedUser.id, profileId);
-        setSelectedProfileIds(prev => [...prev, profileId]);
-        toast({
-          title: "Perfil adicionado",
-          description: "O perfil foi vinculado ao usuário com sucesso.",
-        });
-      } else {
-        await removeRoleFromUser(selectedUser.id, profileId);
-        setSelectedProfileIds(prev => prev.filter(id => id !== profileId));
-        toast({
-          title: "Perfil removido",
-          description: "O perfil foi desvinculado do usuário com sucesso.",
-        });
-      }
+      await addRoleToUserDirect(selectedUser.id, perfilId);
+      toast({
+        title: "Perfil atribuído",
+        description: "O perfil foi vinculado ao usuário com sucesso.",
+      });
+      setSelectedProfileForAdd("");
+      await loadUserRoles(selectedUser.id);
     } catch (error: any) {
       toast({
-        title: "Erro ao atualizar perfil",
+        title: "Erro ao atribuir perfil",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveRole = async (perfilId: number) => {
+    if (!selectedUser) return;
+
+    if (!confirm("Deseja realmente remover este perfil do usuário?")) return;
+
+    try {
+      await removeRoleFromUserDirect(selectedUser.id, perfilId);
+      toast({
+        title: "Perfil removido",
+        description: "O perfil foi desvinculado do usuário com sucesso.",
+      });
+      await loadUserRoles(selectedUser.id);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao remover perfil",
         description: error.message,
         variant: "destructive",
       });
@@ -531,16 +575,22 @@ export default function Users() {
 
               <div className="col-span-2 space-y-2">
                 <Label>Perfis Atribuídos</Label>
-                <div className="flex flex-wrap gap-2">
-                  {getUserProfiles(selectedUser.profileIds).map((profile) => (
-                    <Badge key={profile.id} variant="secondary">
-                      {profile.name}
-                    </Badge>
-                  ))}
-                  {selectedUser.profileIds.length === 0 && (
-                    <p className="text-sm text-muted-foreground">Nenhum perfil atribuído</p>
-                  )}
-                </div>
+                {loadingRoles ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    Carregando papéis...
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {getUserProfiles(selectedProfileIds).map((profile) => (
+                      <Badge key={profile.id} variant="secondary">
+                        {profile.name}
+                      </Badge>
+                    ))}
+                    {selectedProfileIds.length === 0 && (
+                      <p className="text-sm text-muted-foreground">Nenhum perfil atribuído</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -596,36 +646,68 @@ export default function Users() {
               </div>
 
               <div className="space-y-3">
-                <Label>Perfis do Usuário</Label>
-                <div className="space-y-2 border rounded-lg p-3">
-                  {allProfiles.map((profile) => (
-                    <div key={profile.id} className="flex items-center space-x-3">
-                      <Checkbox
-                        id={`profile-${profile.id}`}
-                        checked={selectedProfileIds.includes(profile.id)}
-                        onCheckedChange={(checked) =>
-                          handleProfileToggle(profile.id, checked as boolean)
-                        }
-                      />
-                      <div className="flex-1">
-                        <Label
-                          htmlFor={`profile-${profile.id}`}
-                          className="text-sm font-medium cursor-pointer"
-                        >
-                          {profile.name}
-                        </Label>
-                        <p className="text-xs text-muted-foreground">
-                          {profile.description}
+                <Label>Perfis Atribuídos</Label>
+                
+                {loadingRoles ? (
+                  <div className="p-4 text-center text-muted-foreground border rounded-lg">
+                    Carregando papéis...
+                  </div>
+                ) : (
+                  <>
+                    {/* Lista de papéis atuais */}
+                    <div className="space-y-2 border rounded-lg p-3">
+                      {selectedProfileIds.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-2">
+                          Nenhum perfil atribuído
                         </p>
+                      ) : (
+                        getUserProfiles(selectedProfileIds).map((profile) => (
+                          <div key={profile.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                            <div>
+                              <p className="text-sm font-medium">{profile.name}</p>
+                              <p className="text-xs text-muted-foreground">{profile.description}</p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleRemoveRole(profile.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Atribuir novo perfil */}
+                    <div className="space-y-2">
+                      <Label>Atribuir Novo Perfil</Label>
+                      <div className="flex gap-2">
+                        <Select value={selectedProfileForAdd} onValueChange={setSelectedProfileForAdd}>
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Selecione um perfil" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allProfiles
+                              .filter(p => !selectedProfileIds.includes(p.id))
+                              .map((profile) => (
+                                <SelectItem key={profile.id} value={profile.id.toString()}>
+                                  {profile.name}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <Button 
+                          onClick={handleAddRole}
+                          disabled={!selectedProfileForAdd}
+                        >
+                          Atribuir
+                        </Button>
                       </div>
                     </div>
-                  ))}
-                  {allProfiles.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-2">
-                      Nenhum perfil disponível
-                    </p>
-                  )}
-                </div>
+                  </>
+                )}
               </div>
             </div>
           )}

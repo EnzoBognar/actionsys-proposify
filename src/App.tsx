@@ -47,30 +47,40 @@ const App = () => (
               </AppLayout>
             </ProtectedRoute>
           } />
+          
           <Route path="/usuarios" element={
             <ProtectedRoute>
-              <AppLayout>
-                <Users />
-              </AppLayout>
+              <PermissionGuard permission="users.view" navItem="users">
+                <AppLayout>
+                  <Users />
+                </AppLayout>
+              </PermissionGuard>
             </ProtectedRoute>
           } />
+          
           <Route path="/perfis" element={
             <ProtectedRoute>
-              <AppLayout>
-                <Profiles />
-              </AppLayout>
+              <PermissionGuard permission="roles.view" navItem="roles">
+                <AppLayout>
+                  <Profiles />
+                </AppLayout>
+              </PermissionGuard>
             </ProtectedRoute>
           } />
+          
           <Route path="/permissoes" element={
             <ProtectedRoute>
-              <AppLayout>
-                <Permissions />
-              </AppLayout>
+              <PermissionGuard permission="permissions.view" navItem="permissions">
+                <AppLayout>
+                  <Permissions />
+                </AppLayout>
+              </PermissionGuard>
             </ProtectedRoute>
           } />
+          
           <Route path="/auditoria-logs" element={
             <ProtectedRoute>
-              <PermissionGuard permission="audit.view">
+              <PermissionGuard permission="audit.view" navItem="audit">
                 <AppLayout>
                   <AuditLogs />
                 </AppLayout>

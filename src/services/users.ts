@@ -67,3 +67,27 @@ export async function addRoleToUser(userId: number, perfilId: number) {
 export async function removeRoleFromUser(userId: number, perfilId: number) {
   await api.delete(`/roles/${perfilId}/users/${userId}`);
 }
+
+/**
+ * Lista os papéis/perfis de um usuário
+ * GET /usuarios/{userId}/roles
+ */
+export async function getUserRoles(userId: number) {
+  return await api.get<Array<{ id_perfil: number; desc_perfil: string; status_perfil?: string }>>(`/usuarios/${userId}/roles`);
+}
+
+/**
+ * Adiciona um papel a um usuário
+ * POST /usuarios/{userId}/roles
+ */
+export async function addRoleToUserDirect(userId: number, perfilId: number) {
+  return await api.post<{ linked: boolean; perfil_id: number; already_existed?: boolean }>(`/usuarios/${userId}/roles`, { perfil_id: perfilId });
+}
+
+/**
+ * Remove um papel de um usuário
+ * DELETE /usuarios/{userId}/roles/{perfilId}
+ */
+export async function removeRoleFromUserDirect(userId: number, perfilId: number) {
+  await api.delete(`/usuarios/${userId}/roles/${perfilId}`);
+}

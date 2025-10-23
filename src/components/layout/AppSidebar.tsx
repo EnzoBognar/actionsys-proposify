@@ -8,7 +8,8 @@ import {
   FileText, 
   BarChart3, 
   ChevronRight,
-  Home
+  Home,
+  Lock
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,14 +30,6 @@ import {
 } from "@/components/ui/sidebar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-const securityItems = [
-  { title: "Dashboard de Segurança", url: "/dashboard-seguranca", icon: BarChart3 },
-  { title: "Usuários", url: "/usuarios", icon: Users },
-  { title: "Perfis", url: "/perfis", icon: Shield },
-  { title: "Permissões", url: "/permissoes", icon: Key },
-  { title: "Auditoria e Logs", url: "/auditoria-logs", icon: Settings },
-];
-
 export function AppSidebar() {
   const { state } = useSidebar();
   const { user } = useAuth();
@@ -44,9 +37,16 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   const isCollapsed = state === "collapsed";
 
-  const [securityOpen, setSecurityOpen] = useState(() => 
-    securityItems.some(item => currentPath.startsWith(item.url))
-  );
+  const [securityOpen, setSecurityOpen] = useState(() => {
+    const securityPaths = [
+      "/dashboard-seguranca",
+      "/usuarios", 
+      "/perfis",
+      "/permissoes",
+      "/auditoria-logs"
+    ];
+    return securityPaths.some(path => currentPath.startsWith(path));
+  });
 
   const isActive = (path: string) => currentPath === path;
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
@@ -54,6 +54,9 @@ export function AppSidebar() {
   
   // Controle de visibilidade baseado em nav
   const showSecuritySection = user?.nav?.sections?.security ?? false;
+  const showUsersItem = user?.nav?.items?.users ?? false;
+  const showRolesItem = user?.nav?.items?.roles ?? false;
+  const showPermissionsItem = user?.nav?.items?.permissions ?? false;
   const showAuditItem = user?.nav?.items?.audit ?? false;
 
   return (
@@ -98,22 +101,63 @@ export function AppSidebar() {
               <CollapsibleContent>
                 <SidebarGroupContent>
                   <SidebarMenu>
-                    {securityItems.filter(item => {
-                      // Oculta "Auditoria e Logs" se audit === false
-                      if (item.url === "/auditoria-logs") {
-                        return showAuditItem;
-                      }
-                      return true;
-                    }).map((item) => (
-                      <SidebarMenuItem key={item.title}>
+                    {/* Dashboard de Segurança */}
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <NavLink to="/dashboard-seguranca" className={getNavCls}>
+                          <BarChart3 className="h-4 w-4" />
+                          {!isCollapsed && <span>Dashboard de Segurança</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    
+                    {/* Usuários */}
+                    {showUsersItem && (
+                      <SidebarMenuItem>
                         <SidebarMenuButton asChild>
-                          <NavLink to={item.url} className={getNavCls}>
-                            <item.icon className="h-4 w-4" />
-                            {!isCollapsed && <span>{item.title}</span>}
+                          <NavLink to="/usuarios" className={getNavCls}>
+                            <Users className="h-4 w-4" />
+                            {!isCollapsed && <span>Usuários</span>}
                           </NavLink>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
-                    ))}
+                    )}
+                    
+                    {/* Perfis */}
+                    {showRolesItem && (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink to="/perfis" className={getNavCls}>
+                            <Shield className="h-4 w-4" />
+                            {!isCollapsed && <span>Perfis</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )}
+                    
+                    {/* Permissões */}
+                    {showPermissionsItem && (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink to="/permissoes" className={getNavCls}>
+                            <Lock className="h-4 w-4" />
+                            {!isCollapsed && <span>Permissões</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )}
+                    
+                    {/* Auditoria e Logs */}
+                    {showAuditItem && (
+                      <SidebarMenuItem>
+                        <SidebarMenuButton asChild>
+                          <NavLink to="/auditoria-logs" className={getNavCls}>
+                            <Settings className="h-4 w-4" />
+                            {!isCollapsed && <span>Auditoria e Logs</span>}
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )}
                   </SidebarMenu>
                 </SidebarGroupContent>
               </CollapsibleContent>
