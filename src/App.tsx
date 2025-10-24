@@ -9,7 +9,6 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { MfaProvider } from "@/contexts/MfaContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { PermissionGuard } from "@/components/auth/PermissionGuard";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -50,41 +49,33 @@ const App = () => (
           
           <Route path="/usuarios" element={
             <ProtectedRoute>
-              <PermissionGuard permission="users.view" navItem="users">
-                <AppLayout>
-                  <Users />
-                </AppLayout>
-              </PermissionGuard>
+              <AppLayout>
+                <Users />
+              </AppLayout>
             </ProtectedRoute>
           } />
           
           <Route path="/perfis" element={
             <ProtectedRoute>
-              <PermissionGuard permission="roles.view" navItem="roles">
-                <AppLayout>
-                  <Profiles />
-                </AppLayout>
-              </PermissionGuard>
+              <AppLayout>
+                <Profiles />
+              </AppLayout>
             </ProtectedRoute>
           } />
           
           <Route path="/permissoes" element={
             <ProtectedRoute>
-              <PermissionGuard permission="permissions.view" navItem="permissions">
-                <AppLayout>
-                  <Permissions />
-                </AppLayout>
-              </PermissionGuard>
+              <AppLayout>
+                <Permissions />
+              </AppLayout>
             </ProtectedRoute>
           } />
           
           <Route path="/auditoria-logs" element={
             <ProtectedRoute>
-              <PermissionGuard permission="audit.view" navItem="audit">
-                <AppLayout>
-                  <AuditLogs />
-                </AppLayout>
-              </PermissionGuard>
+              <AppLayout>
+                <AuditLogs />
+              </AppLayout>
             </ProtectedRoute>
           } />
           <Route path="/preferencias" element={

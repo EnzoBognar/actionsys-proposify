@@ -22,11 +22,6 @@ async function request<T>(path: string, method: HttpMethod, body?: unknown): Pro
       throw new Error("Sessão expirada. Por favor, faça login novamente.");
     }
     
-    // 403 Forbidden - permissão insuficiente
-    if (res.status === 403) {
-      throw new Error("Permissão insuficiente para realizar esta ação.");
-    }
-    
     const detail = await res.text().catch(() => "");
     throw new Error(detail || `HTTP ${res.status}`);
   }

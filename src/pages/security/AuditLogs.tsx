@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +25,6 @@ export default function AuditLogs() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
 
   const loadLogs = async () => {
     setLoading(true);
@@ -40,22 +38,20 @@ export default function AuditLogs() {
     } catch (error) {
       console.error("Error loading audit logs:", error);
       
-      // Se for 403, redirecionar para dashboard
+      // Se for 403, mostrar apenas toast (não redirecionar)
       if (error instanceof Error && error.message.includes("403")) {
         toast({
           title: "Acesso negado",
           description: "Você não tem permissão para visualizar os logs de auditoria.",
           variant: "destructive",
         });
-        navigate("/dashboard");
-        return;
+      } else {
+        toast({
+          title: "Erro ao carregar logs",
+          description: error instanceof Error ? error.message : "Erro desconhecido",
+          variant: "destructive",
+        });
       }
-      
-      toast({
-        title: "Erro ao carregar logs",
-        description: error instanceof Error ? error.message : "Erro desconhecido",
-        variant: "destructive",
-      });
       
       // Garantir que auditLogs seja um array vazio em caso de erro
       setAuditLogs([]);
