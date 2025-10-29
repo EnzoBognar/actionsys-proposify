@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit, Trash2, Eye, Check, X } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,96 +37,69 @@ import {
   listPermissoes,
   getPermissao,
   createPermissao,
-  patchPermissao,
-  suspendPermissao,
-  addRoleToPermission,
-  removeRoleFromPermission,
+  updatePermissao,
+  softDeletePermissao,
   type PermissaoRead,
-  type PermissaoWithRolesRead,
 } from "@/services/permissions";
-import {
-  listPerfis,
-  type PerfilRead,
-} from "@/services/roles";
-import { Checkbox } from "@/components/ui/checkbox";
 
 interface Permission {
   id: number;
   name: string;
   description: string;
-  status: 'ativo' | 'inativo' | 'suspenso';
+  status: 'A' | 'S';
   createdAt: string;
-  roleIds: number[];
+  updatedAt: string;
 }
 
-interface Profile {
-  id: number;
-  name: string;
-  description: string;
-}
-
-const statusMap: Record<string, Permission['status']> = {
-  'A': 'ativo',
-  'I': 'inativo',
-  'S': 'suspenso',
-};
-
-const apiToUiPermission = (p: PermissaoRead | PermissaoWithRolesRead): Permission => ({
+const apiToUiPermission = (p: PermissaoRead): Permission => ({
   id: p.id_permissao,
   name: p.nome_permissao,
-  description: p.desc_permissao || "",
-  status: statusMap[p.status_permissao] || 'inativo',
-  createdAt: p.data_cadastro,
-  roleIds: 'role_ids' in p ? p.role_ids : [],
-});
-
-const apiToUiProfile = (p: PerfilRead): Profile => ({
-  id: p.id_perfil,
-  name: p.desc_perfil,
-  description: p.desc_perfil,
+  description: p.descricao || "",
+  status: p.status,
+  createdAt: p.criado_em,
+  updatedAt: p.atualizado_em,
 });
 
 export default function Permissions() {
   const { toast } = useToast();
   const [permissions, setPermissions] = useState<Permission[]>([]);
-  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+
+  // Modais
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [selectedPermission, setSelectedPermission] = useState<Permission | null>(null);
-  const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
+  const [confirmAction, setConfirmAction] = useState<'suspend' | 'activate'>('suspend');
 
   // Form states
-  const [newName, setNewName] = useState("");
-  const [newDescription, setNewDescription] = useState("");
-  const [editName, setEditName] = useState("");
-  const [editDescription, setEditDescription] = useState("");
+  const [formName, setFormName] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [nameError, setNameError] = useState("");
 
-  const loadPermissions = async () => {
+  const loadPermissions = async (searchQuery = searchTerm, currentPage = page) => {
     try {
       setLoading(true);
-      const data = await listPermissoes();
+      const offset = (currentPage - 1) * pageSize;
+      const response = await listPermissoes({
+        limit: pageSize,
+        offset,
+        q: searchQuery || undefined,
+      });
       
-      // Buscar detalhes de cada permissão para obter role_ids
-      const permissionsWithRoles = await Promise.all(
-        data.map(async (p) => {
-          try {
-            const details = await getPermissao(p.id_permissao);
-            return apiToUiPermission(details);
-          } catch {
-            return apiToUiPermission(p);
-          }
-        })
-      );
-      
-      setPermissions(permissionsWithRoles);
+      const mapped = response.items.map(apiToUiPermission);
+      setPermissions(mapped);
+      setTotal(response.total);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar permissões",
-        description: error.message,
+        description: error.message || "Ocorreu um erro. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -134,99 +107,124 @@ export default function Permissions() {
     }
   };
 
-  const loadProfiles = async () => {
-    try {
-      const data = await listPerfis({ status: "A" });
-      const mapped = data.map(apiToUiProfile);
-      setAllProfiles(mapped);
-    } catch (error: any) {
-      toast({
-        title: "Erro ao carregar perfis",
-        description: error.message,
-        variant: "destructive",
-      });
+  useEffect(() => {
+    loadPermissions();
+  }, [page]);
+
+  const handleSearch = () => {
+    setPage(1);
+    loadPermissions(searchTerm, 1);
+  };
+
+  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
     }
   };
 
-  useEffect(() => {
-    loadPermissions();
-    loadProfiles();
-  }, []);
+  const getStatusBadge = (status: 'A' | 'S') => {
+    if (status === 'A') {
+      return <Badge variant="default">Ativo</Badge>;
+    }
+    return <Badge variant="destructive">Suspenso</Badge>;
+  };
 
-  const filteredPermissions = permissions.filter(permission =>
-    permission.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    permission.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const validateName = (name: string): string => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return "O nome da permissão é obrigatório";
+    }
+    if (trimmed.length < 3) {
+      return "O nome deve ter pelo menos 3 caracteres";
+    }
+    if (trimmed.length > 80) {
+      return "O nome deve ter no máximo 80 caracteres";
+    }
+    return "";
+  };
 
-  const getStatusBadge = (status: string) => {
-    const variants = {
-      ativo: "default",
-      inativo: "secondary",
-      suspenso: "destructive"
-    } as const;
-
-    return (
-      <Badge variant={variants[status as keyof typeof variants]}>
-        {status}
-      </Badge>
-    );
+  const handleOpenCreate = () => {
+    setFormName("");
+    setFormDescription("");
+    setNameError("");
+    setIsCreateDialogOpen(true);
   };
 
   const handleView = (permission: Permission) => {
     setSelectedPermission(permission);
-    setSelectedRoleIds(permission.roleIds);
     setIsViewDialogOpen(true);
   };
 
-  const handleEdit = (permission: Permission) => {
+  const handleOpenEdit = (permission: Permission) => {
     setSelectedPermission(permission);
-    setEditName(permission.name);
-    setEditDescription(permission.description);
-    setSelectedRoleIds(permission.roleIds);
+    setFormName(permission.name);
+    setFormDescription(permission.description);
+    setNameError("");
     setIsEditDialogOpen(true);
   };
 
-  const handleDelete = (permission: Permission) => {
+  const handleOpenConfirm = (permission: Permission, action: 'suspend' | 'activate') => {
     setSelectedPermission(permission);
-    setIsDeleteDialogOpen(true);
+    setConfirmAction(action);
+    setIsConfirmDialogOpen(true);
   };
 
-  const confirmDelete = async () => {
+  const handleConfirmAction = async () => {
     if (!selectedPermission) return;
     
     try {
-      await suspendPermissao(selectedPermission.id);
-      toast({
-        title: "Permissão suspensa com sucesso",
-        description: "A permissão foi suspensa e não está mais disponível.",
-      });
-      setIsDeleteDialogOpen(false);
+      setSubmitting(true);
+      
+      if (confirmAction === 'suspend') {
+        await softDeletePermissao(selectedPermission.id);
+        toast({
+          title: "Permissão suspensa com sucesso",
+          description: "A permissão foi suspensa.",
+        });
+      } else {
+        await updatePermissao(selectedPermission.id, { status: 'A' });
+        toast({
+          title: "Permissão ativada com sucesso",
+          description: "A permissão foi reativada.",
+        });
+      }
+      
+      setIsConfirmDialogOpen(false);
       setSelectedPermission(null);
       await loadPermissions();
     } catch (error: any) {
+      const errorMessage = error.message || "Ocorreu um erro. Tente novamente.";
       toast({
-        title: "Erro ao suspender permissão",
-        description: error.message,
+        title: confirmAction === 'suspend' ? "Erro ao suspender permissão" : "Erro ao ativar permissão",
+        description: errorMessage,
         variant: "destructive",
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleCreatePermission = async () => {
-    if (!newName.trim()) {
+    const error = validateName(formName);
+    if (error) {
+      setNameError(error);
+      return;
+    }
+
+    if (formDescription && formDescription.length > 255) {
       toast({
         title: "Erro",
-        description: "O nome da permissão é obrigatório",
+        description: "A descrição deve ter no máximo 255 caracteres",
         variant: "destructive",
       });
       return;
     }
 
     try {
+      setSubmitting(true);
       await createPermissao({
-        nome_permissao: newName,
-        desc_permissao: newDescription || undefined,
-        status_permissao: "A"
+        nome_permissao: formName.trim(),
+        descricao: formDescription.trim() || undefined,
       });
       
       toast({
@@ -234,26 +232,68 @@ export default function Permissions() {
         description: "A nova permissão foi adicionada ao sistema.",
       });
       
-      setNewName("");
-      setNewDescription("");
-      setIsDialogOpen(false);
+      setIsCreateDialogOpen(false);
       await loadPermissions();
     } catch (error: any) {
-      toast({
-        title: "Erro ao criar permissão",
-        description: error.message,
-        variant: "destructive",
-      });
+      const errorMessage = error.message || "Ocorreu um erro. Tente novamente.";
+      
+      // Detectar erro 409 (nome duplicado)
+      if (errorMessage.includes("409") || errorMessage.toLowerCase().includes("já existe") || errorMessage.toLowerCase().includes("duplicad")) {
+        setNameError("Já existe uma permissão com esse nome");
+        toast({
+          title: "Nome duplicado",
+          description: "Já existe uma permissão com esse nome",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro ao criar permissão",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleSaveEdit = async () => {
     if (!selectedPermission) return;
 
-    try {
-      await patchPermissao(selectedPermission.id, {
-        desc_permissao: editDescription || undefined
+    const error = validateName(formName);
+    if (error) {
+      setNameError(error);
+      return;
+    }
+
+    if (formDescription && formDescription.length > 255) {
+      toast({
+        title: "Erro",
+        description: "A descrição deve ter no máximo 255 caracteres",
+        variant: "destructive",
       });
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      // Montar payload com apenas os campos alterados
+      const payload: any = {};
+      if (formName.trim() !== selectedPermission.name) {
+        payload.nome_permissao = formName.trim();
+      }
+      if (formDescription.trim() !== selectedPermission.description) {
+        payload.descricao = formDescription.trim();
+      }
+
+      // Se nada mudou, apenas fecha o modal
+      if (Object.keys(payload).length === 0) {
+        setIsEditDialogOpen(false);
+        return;
+      }
+
+      await updatePermissao(selectedPermission.id, payload);
       
       toast({
         title: "Permissão atualizada",
@@ -263,46 +303,31 @@ export default function Permissions() {
       setIsEditDialogOpen(false);
       await loadPermissions();
     } catch (error: any) {
-      toast({
-        title: "Erro ao atualizar permissão",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleRoleToggle = async (roleId: number, checked: boolean) => {
-    if (!selectedPermission) return;
-
-    try {
-      if (checked) {
-        await addRoleToPermission(selectedPermission.id, roleId);
-        setSelectedRoleIds(prev => [...prev, roleId]);
+      const errorMessage = error.message || "Ocorreu um erro. Tente novamente.";
+      
+      // Detectar erro 409 (nome duplicado)
+      if (errorMessage.includes("409") || errorMessage.toLowerCase().includes("já existe") || errorMessage.toLowerCase().includes("duplicad")) {
+        setNameError("Já existe uma permissão com esse nome");
         toast({
-          title: "Perfil vinculado",
-          description: "O perfil foi vinculado à permissão com sucesso.",
+          title: "Nome duplicado",
+          description: "Já existe uma permissão com esse nome",
+          variant: "destructive",
         });
       } else {
-        await removeRoleFromPermission(selectedPermission.id, roleId);
-        setSelectedRoleIds(prev => prev.filter(id => id !== roleId));
         toast({
-          title: "Perfil desvinculado",
-          description: "O perfil foi desvinculado da permissão com sucesso.",
+          title: "Erro ao atualizar permissão",
+          description: errorMessage,
+          variant: "destructive",
         });
       }
-      await loadPermissions();
-    } catch (error: any) {
-      toast({
-        title: "Erro ao atualizar vínculo",
-        description: error.message,
-        variant: "destructive",
-      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const getRolesByIds = (roleIds: number[]) => {
-    return allProfiles.filter(p => roleIds.includes(p.id));
-  };
+  const totalPages = Math.ceil(total / pageSize);
+  const canGoPrevious = page > 1;
+  const canGoNext = page < totalPages;
 
   return (
     <div className="space-y-6">
@@ -314,9 +339,9 @@ export default function Permissions() {
           </p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2" onClick={handleOpenCreate}>
               <Plus className="h-4 w-4" />
               Nova Permissão
             </Button>
@@ -331,13 +356,23 @@ export default function Permissions() {
             
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome da Permissão</Label>
+                <Label htmlFor="name">Nome da Permissão *</Label>
                 <Input
                   id="name"
-                  placeholder="Digite o nome da permissão"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Ex: security.users.view"
+                  value={formName}
+                  onChange={(e) => {
+                    setFormName(e.target.value);
+                    setNameError("");
+                  }}
+                  className={nameError ? "border-destructive" : ""}
                 />
+                {nameError && (
+                  <p className="text-sm text-destructive">{nameError}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Formato recomendado: dominio.subdominio.acao (3-80 caracteres)
+                </p>
               </div>
               
               <div className="space-y-2">
@@ -346,18 +381,22 @@ export default function Permissions() {
                   id="description" 
                   placeholder="Descreva o que esta permissão permite fazer"
                   className="resize-none"
-                  value={newDescription}
-                  onChange={(e) => setNewDescription(e.target.value)}
+                  value={formDescription}
+                  onChange={(e) => setFormDescription(e.target.value)}
+                  maxLength={255}
                 />
+                <p className="text-xs text-muted-foreground">
+                  {formDescription.length}/255 caracteres
+                </p>
               </div>
             </div>
             
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} disabled={submitting}>
                 Cancelar
               </Button>
-              <Button onClick={handleCreatePermission}>
-                Salvar Permissão
+              <Button onClick={handleCreatePermission} disabled={submitting}>
+                {submitting ? "Salvando..." : "Salvar Permissão"}
               </Button>
             </div>
           </DialogContent>
@@ -368,7 +407,7 @@ export default function Permissions() {
         <CardHeader>
           <CardTitle>Lista de Permissões</CardTitle>
           <CardDescription>
-            {loading ? "Carregando..." : `Total de ${permissions.length} permissões cadastradas`}
+            {loading ? "Carregando..." : `${total} permissões encontradas (página ${page} de ${totalPages})`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -379,9 +418,13 @@ export default function Permissions() {
                 placeholder="Buscar por nome ou descrição..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={handleSearchKeyPress}
                 className="pl-8"
               />
             </div>
+            <Button onClick={handleSearch} variant="outline">
+              Buscar
+            </Button>
           </div>
 
           <div className="rounded-md border">
@@ -391,42 +434,51 @@ export default function Permissions() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Perfis Vinculados</TableHead>
-                  <TableHead className="w-[100px]">Ações</TableHead>
+                  <TableHead className="w-[150px]">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPermissions.map((permission) => (
+                {permissions.map((permission) => (
                   <TableRow key={permission.id}>
                     <TableCell className="font-medium">{permission.name}</TableCell>
-                    <TableCell className="max-w-xs truncate">{permission.description}</TableCell>
+                    <TableCell className="max-w-xs truncate">{permission.description || "—"}</TableCell>
                     <TableCell>{getStatusBadge(permission.status)}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{permission.roleIds.length}</Badge>
-                    </TableCell>
-                    <TableCell>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleView(permission)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleView(permission)} title="Visualizar">
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(permission)}>
+                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(permission)} title="Editar">
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(permission)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {permission.status === 'A' ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleOpenConfirm(permission, 'suspend')}
+                            title="Suspender"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-green-600 hover:text-green-700"
+                            onClick={() => handleOpenConfirm(permission, 'activate')}
+                            title="Reativar"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
                 ))}
-                {!loading && filteredPermissions.length === 0 && (
+                {!loading && permissions.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={4} className="text-center text-muted-foreground">
                       Nenhuma permissão encontrada.
                     </TableCell>
                   </TableRow>
@@ -434,6 +486,38 @@ export default function Permissions() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Paginação */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4">
+              <div className="text-sm text-muted-foreground">
+                Mostrando {((page - 1) * pageSize) + 1} a {Math.min(page * pageSize, total)} de {total} resultados
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => p - 1)}
+                  disabled={!canGoPrevious}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Anterior
+                </Button>
+                <div className="text-sm">
+                  Página {page} de {totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={!canGoNext}
+                >
+                  Próxima
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -465,18 +549,19 @@ export default function Permissions() {
               <Label className="text-sm font-medium">Descrição</Label>
               <p className="text-sm text-muted-foreground">{selectedPermission?.description || "Sem descrição"}</p>
             </div>
-            
-            <div>
-              <Label className="text-sm font-medium">Perfis Vinculados</Label>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {getRolesByIds(selectedPermission?.roleIds || []).map((profile) => (
-                  <Badge key={profile.id} variant="secondary">
-                    {profile.name}
-                  </Badge>
-                ))}
-                {(selectedPermission?.roleIds.length === 0) && (
-                  <p className="text-sm text-muted-foreground">Nenhum perfil vinculado</p>
-                )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Criado em</Label>
+                <p className="text-sm text-muted-foreground">
+                  {selectedPermission?.createdAt ? new Date(selectedPermission.createdAt).toLocaleString('pt-BR') : "—"}
+                </p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Atualizado em</Label>
+                <p className="text-sm text-muted-foreground">
+                  {selectedPermission?.updatedAt ? new Date(selectedPermission.updatedAt).toLocaleString('pt-BR') : "—"}
+                </p>
               </div>
             </div>
           </div>
@@ -501,88 +586,82 @@ export default function Permissions() {
           
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-name">Nome da Permissão</Label>
+              <Label htmlFor="edit-name">Nome da Permissão *</Label>
               <Input 
                 id="edit-name" 
-                value={editName}
-                disabled
-                placeholder="O nome não pode ser alterado" 
+                value={formName}
+                onChange={(e) => {
+                  setFormName(e.target.value);
+                  setNameError("");
+                }}
+                placeholder="Ex: security.users.view"
+                className={nameError ? "border-destructive" : ""}
               />
+              {nameError && (
+                <p className="text-sm text-destructive">{nameError}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Formato recomendado: dominio.subdominio.acao (3-80 caracteres)
+              </p>
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="edit-description">Descrição</Label>
               <Textarea 
                 id="edit-description" 
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
                 placeholder="Descreva o que esta permissão permite fazer"
                 className="resize-none"
+                maxLength={255}
               />
-            </div>
-            
-            <div className="space-y-3">
-              <Label>Perfis Vinculados</Label>
-              <div className="space-y-2 border rounded-lg p-3">
-                {allProfiles.map((profile) => (
-                  <div key={profile.id} className="flex items-center space-x-3">
-                    <Checkbox
-                      id={`role-${profile.id}`}
-                      checked={selectedRoleIds.includes(profile.id)}
-                      onCheckedChange={(checked) =>
-                        handleRoleToggle(profile.id, checked as boolean)
-                      }
-                    />
-                    <div className="flex-1">
-                      <Label
-                        htmlFor={`role-${profile.id}`}
-                        className="text-sm font-medium cursor-pointer"
-                      >
-                        {profile.name}
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        {profile.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-                {allProfiles.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-2">
-                    Nenhum perfil disponível
-                  </p>
-                )}
-              </div>
+              <p className="text-xs text-muted-foreground">
+                {formDescription.length}/255 caracteres
+              </p>
             </div>
           </div>
           
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={submitting}>
               Cancelar
             </Button>
-            <Button onClick={handleSaveEdit}>
-              Salvar Alterações
+            <Button onClick={handleSaveEdit} disabled={submitting}>
+              {submitting ? "Salvando..." : "Salvar Alterações"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Alert Dialog para confirmar exclusão */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      {/* Alert Dialog para confirmar suspensão/ativação */}
+      <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Suspensão</AlertDialogTitle>
+            <AlertDialogTitle>
+              {confirmAction === 'suspend' ? 'Confirmar Suspensão' : 'Confirmar Ativação'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja suspender a permissão "{selectedPermission?.name}"? 
-              Esta ação pode afetar {selectedPermission?.roleIds.length} perfil(is) vinculado(s).
+              {confirmAction === 'suspend' 
+                ? `Tem certeza que deseja suspender a permissão "${selectedPermission?.name}"?`
+                : `Tem certeza que deseja reativar a permissão "${selectedPermission?.name}"?`
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={submitting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleConfirmAction}
+              disabled={submitting}
+              className={confirmAction === 'suspend' 
+                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" 
+                : "bg-green-600 text-white hover:bg-green-700"
+              }
             >
-              Suspender Permissão
+              {submitting 
+                ? "Processando..." 
+                : confirmAction === 'suspend' 
+                  ? 'Suspender Permissão' 
+                  : 'Ativar Permissão'
+              }
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
