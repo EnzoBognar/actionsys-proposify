@@ -1,77 +1,74 @@
 // src/services/permissions.ts
 import { api } from "@/lib/api";
 
-export interface PermissaoRead {
-  id_permissao: number;
+export interface Permissao {
+  id_permissao?: number;
   nome_permissao: string;
-  descricao?: string;
-  status: "A" | "S";
-  criado_em: string;
-  atualizado_em: string;
-}
-
-export interface PermissaoListResponse {
-  items: PermissaoRead[];
-  total: number;
+  desc_permissao?: string | null;
+  status_permissao?: "A" | "S";
+  data_cadastro: string;
+  data_status: string;
+  ip_atualizacao: string;
+  atualizado_por?: string | null;
 }
 
 export interface PermissaoCreate {
   nome_permissao: string;
-  descricao?: string;
+  desc_permissao?: string | null;
+  status_permissao?: "A" | "S";
 }
 
 export interface PermissaoUpdate {
   nome_permissao?: string;
-  descricao?: string;
-  status?: "A" | "S";
-}
-
-export interface PermissaoListParams {
-  q?: string;
-  status?: string;
-  limit?: number;
-  offset?: number;
+  desc_permissao?: string | null;
+  status_permissao?: "A" | "S";
 }
 
 /**
- * Lista permissões com filtros opcionais e paginação
+ * Lista todas as permissões (sem paginação no backend)
  */
-export async function listPermissoes(params?: PermissaoListParams) {
-  const queryParams = new URLSearchParams();
-  if (params?.q) queryParams.append("q", params.q);
-  if (params?.status) queryParams.append("status", params.status);
-  if (params?.limit) queryParams.append("limit", params.limit.toString());
-  if (params?.offset) queryParams.append("offset", params.offset.toString());
-  
-  const query = queryParams.toString();
-  const url = `/permissoes${query ? `?${query}` : ""}`;
-  return await api.get<PermissaoListResponse>(url);
+export async function listPermissions(): Promise<Permissao[]> {
+  return await api.get<Permissao[]>("/permissions/");
 }
 
 /**
  * Obtém uma permissão por ID
  */
-export async function getPermissao(id: number) {
-  return await api.get<PermissaoRead>(`/permissoes/${id}`);
+export async function getPermission(id: number): Promise<Permissao> {
+  return await api.get<Permissao>(`/permissions/${id}`);
 }
 
 /**
  * Cria uma nova permissão
  */
-export async function createPermissao(data: PermissaoCreate) {
-  return await api.post<PermissaoRead>("/permissoes", data);
+export async function createPermission(data: PermissaoCreate): Promise<Permissao> {
+  return await api.post<Permissao>("/permissions/", data);
 }
 
 /**
  * Atualiza uma permissão (PATCH parcial)
  */
-export async function updatePermissao(id: number, data: PermissaoUpdate) {
-  return await api.patch<PermissaoRead>(`/permissoes/${id}`, data);
+export async function updatePermission(id: number, data: PermissaoUpdate): Promise<Permissao> {
+  return await api.patch<Permissao>(`/permissions/${id}`, data);
 }
 
 /**
- * Suspende uma permissão (soft delete)
+ * Exclui uma permissão (DELETE retorna 204)
  */
-export async function softDeletePermissao(id: number) {
-  return await api.delete<PermissaoRead>(`/permissoes/${id}`);
+export async function deletePermission(id: number): Promise<void> {
+  return await api.delete<void>(`/permissions/${id}`);
+}
+
+/**
+ * Vincula uma permissão a um perfil
+ */
+export async function linkPermissionToRole(id_perfil: number, id_permissao: number): Promise<void> {
+  return await api.post<void>(`/permissions/link?id_perfil=${id_perfil}&id_permissao=${id_permissao}`);
+}
+
+/**
+ * Remove vínculo de permissão de um perfil
+ */
+export async function unlinkPermissionFromRole(id_perfil: number, id_permissao: number): Promise<void> {
+  return await api.delete<void>(`/permissions/link?id_perfil=${id_perfil}&id_permissao=${id_permissao}`);
 }

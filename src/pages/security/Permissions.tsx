@@ -1,9 +1,7 @@
-import { useState, useEffect } from "react";
-import { Plus, Search, Edit, Trash2, Eye, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -16,9 +14,9 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -30,76 +28,69 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Eye, Pencil, Trash2, Plus, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
-  listPermissoes,
-  getPermissao,
-  createPermissao,
-  updatePermissao,
-  softDeletePermissao,
-  type PermissaoRead,
+  listPermissions,
+  getPermission,
+  createPermission,
+  updatePermission,
+  deletePermission,
+  Permissao,
 } from "@/services/permissions";
 
-interface Permission {
-  id: number;
-  name: string;
-  description: string;
-  status: 'A' | 'S';
-  createdAt: string;
-  updatedAt: string;
-}
-
-const apiToUiPermission = (p: PermissaoRead): Permission => ({
-  id: p.id_permissao,
-  name: p.nome_permissao,
-  description: p.descricao || "",
-  status: p.status,
-  createdAt: p.criado_em,
-  updatedAt: p.atualizado_em,
-});
-
 export default function Permissions() {
-  const { toast } = useToast();
-  const [permissions, setPermissions] = useState<Permission[]>([]);
+  const [allPermissions, setAllPermissions] = useState<Permissao[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [total, setTotal] = useState(0);
+  const { toast } = useToast();
+
+  // Paginação local
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  // Modais
+  // Busca local
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Estado para visualização
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [selectedPermission, setSelectedPermission] = useState<Permissao | null>(null);
+
+  // Estado para criação/edição
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [selectedPermission, setSelectedPermission] = useState<Permission | null>(null);
-  const [confirmAction, setConfirmAction] = useState<'suspend' | 'activate'>('suspend');
-
-  // Form states
+  const [editingPermission, setEditingPermission] = useState<Permissao | null>(null);
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
+  const [formStatus, setFormStatus] = useState<"A" | "S">("A");
   const [nameError, setNameError] = useState("");
 
-  const loadPermissions = async (searchQuery = searchTerm, currentPage = page) => {
+  // Estado para confirmação de exclusão
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [confirmPermission, setConfirmPermission] = useState<Permissao | null>(null);
+
+  // Carregar todas as permissões (sem paginação no backend)
+  useEffect(() => {
+    loadPermissions();
+  }, []);
+
+  const loadPermissions = async () => {
     try {
       setLoading(true);
-      const offset = (currentPage - 1) * pageSize;
-      const response = await listPermissoes({
-        limit: pageSize,
-        offset,
-        q: searchQuery || undefined,
-      });
-      
-      const mapped = response.items.map(apiToUiPermission);
-      setPermissions(mapped);
-      setTotal(response.total);
+      const data = await listPermissions();
+      setAllPermissions(data);
     } catch (error: any) {
       toast({
         title: "Erro ao carregar permissões",
-        description: error.message || "Ocorreu um erro. Tente novamente.",
+        description: error.message || "Ocorreu um erro desconhecido",
         variant: "destructive",
       });
     } finally {
@@ -107,148 +98,121 @@ export default function Permissions() {
     }
   };
 
-  useEffect(() => {
-    loadPermissions();
-  }, [page]);
+  // Filtrar e paginar localmente
+  const filteredPermissions = useMemo(() => {
+    const filtered = allPermissions.filter((p) => {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        p.nome_permissao.toLowerCase().includes(searchLower) ||
+        (p.desc_permissao && p.desc_permissao.toLowerCase().includes(searchLower))
+      );
+    });
+    return filtered;
+  }, [allPermissions, searchTerm]);
 
-  const handleSearch = () => {
-    setPage(1);
-    loadPermissions(searchTerm, 1);
-  };
+  const paginatedPermissions = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    return filteredPermissions.slice(start, end);
+  }, [filteredPermissions, page]);
 
-  const handleSearchKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch();
+  const totalPages = Math.ceil(filteredPermissions.length / pageSize);
+
+  const handleViewPermission = async (id: number) => {
+    try {
+      const perm = await getPermission(id);
+      setSelectedPermission(perm);
+      setIsViewDialogOpen(true);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar permissão",
+        description: error.message || "Ocorreu um erro desconhecido",
+        variant: "destructive",
+      });
     }
   };
 
-  const getStatusBadge = (status: 'A' | 'S') => {
-    if (status === 'A') {
-      return <Badge variant="default">Ativo</Badge>;
+  const handleEditPermission = async (id: number) => {
+    try {
+      const perm = await getPermission(id);
+      setEditingPermission(perm);
+      setFormName(perm.nome_permissao);
+      setFormDescription(perm.desc_permissao || "");
+      setFormStatus(perm.status_permissao || "A");
+      setNameError("");
+      setIsEditDialogOpen(true);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar permissão",
+        description: error.message || "Ocorreu um erro desconhecido",
+        variant: "destructive",
+      });
     }
-    return <Badge variant="destructive">Suspenso</Badge>;
   };
 
-  const validateName = (name: string): string => {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      return "O nome da permissão é obrigatório";
-    }
-    if (trimmed.length < 3) {
-      return "O nome deve ter pelo menos 3 caracteres";
-    }
-    if (trimmed.length > 80) {
-      return "O nome deve ter no máximo 80 caracteres";
-    }
-    return "";
-  };
-
-  const handleOpenCreate = () => {
+  const handleOpenCreateDialog = () => {
     setFormName("");
     setFormDescription("");
+    setFormStatus("A");
     setNameError("");
     setIsCreateDialogOpen(true);
   };
 
-  const handleView = (permission: Permission) => {
-    setSelectedPermission(permission);
-    setIsViewDialogOpen(true);
-  };
-
-  const handleOpenEdit = (permission: Permission) => {
-    setSelectedPermission(permission);
-    setFormName(permission.name);
-    setFormDescription(permission.description);
+  const validateForm = () => {
+    const trimmedName = formName.trim();
+    if (!trimmedName) {
+      setNameError("Nome é obrigatório");
+      return false;
+    }
+    if (trimmedName.length < 3) {
+      setNameError("Nome deve ter pelo menos 3 caracteres");
+      return false;
+    }
+    if (trimmedName.length > 80) {
+      setNameError("Nome deve ter no máximo 80 caracteres");
+      return false;
+    }
+    if (formDescription.length > 120) {
+      setNameError("");
+      toast({
+        title: "Erro de validação",
+        description: "Descrição deve ter no máximo 120 caracteres",
+        variant: "destructive",
+      });
+      return false;
+    }
     setNameError("");
-    setIsEditDialogOpen(true);
+    return true;
   };
 
-  const handleOpenConfirm = (permission: Permission, action: 'suspend' | 'activate') => {
-    setSelectedPermission(permission);
-    setConfirmAction(action);
-    setIsConfirmDialogOpen(true);
-  };
-
-  const handleConfirmAction = async () => {
-    if (!selectedPermission) return;
-    
-    try {
-      setSubmitting(true);
-      
-      if (confirmAction === 'suspend') {
-        await softDeletePermissao(selectedPermission.id);
-        toast({
-          title: "Permissão suspensa com sucesso",
-          description: "A permissão foi suspensa.",
-        });
-      } else {
-        await updatePermissao(selectedPermission.id, { status: 'A' });
-        toast({
-          title: "Permissão ativada com sucesso",
-          description: "A permissão foi reativada.",
-        });
-      }
-      
-      setIsConfirmDialogOpen(false);
-      setSelectedPermission(null);
-      await loadPermissions();
-    } catch (error: any) {
-      const errorMessage = error.message || "Ocorreu um erro. Tente novamente.";
-      toast({
-        title: confirmAction === 'suspend' ? "Erro ao suspender permissão" : "Erro ao ativar permissão",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleCreatePermission = async () => {
-    const error = validateName(formName);
-    if (error) {
-      setNameError(error);
-      return;
-    }
-
-    if (formDescription && formDescription.length > 255) {
-      toast({
-        title: "Erro",
-        description: "A descrição deve ter no máximo 255 caracteres",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleCreateSubmit = async () => {
+    if (!validateForm()) return;
 
     try {
       setSubmitting(true);
-      await createPermissao({
+      await createPermission({
         nome_permissao: formName.trim(),
-        descricao: formDescription.trim() || undefined,
+        desc_permissao: formDescription.trim() || null,
+        status_permissao: formStatus,
       });
-      
       toast({
-        title: "Permissão criada com sucesso",
-        description: "A nova permissão foi adicionada ao sistema.",
+        title: "Permissão criada",
+        description: "A permissão foi criada com sucesso",
       });
-      
       setIsCreateDialogOpen(false);
-      await loadPermissions();
+      loadPermissions();
     } catch (error: any) {
-      const errorMessage = error.message || "Ocorreu um erro. Tente novamente.";
-      
-      // Detectar erro 409 (nome duplicado)
-      if (errorMessage.includes("409") || errorMessage.toLowerCase().includes("já existe") || errorMessage.toLowerCase().includes("duplicad")) {
+      if (error.message.includes("409")) {
         setNameError("Já existe uma permissão com esse nome");
         toast({
-          title: "Nome duplicado",
+          title: "Erro ao criar permissão",
           description: "Já existe uma permissão com esse nome",
           variant: "destructive",
         });
       } else {
         toast({
           title: "Erro ao criar permissão",
-          description: errorMessage,
+          description: error.message || "Ocorreu um erro desconhecido",
           variant: "destructive",
         });
       }
@@ -257,66 +221,51 @@ export default function Permissions() {
     }
   };
 
-  const handleSaveEdit = async () => {
-    if (!selectedPermission) return;
-
-    const error = validateName(formName);
-    if (error) {
-      setNameError(error);
-      return;
-    }
-
-    if (formDescription && formDescription.length > 255) {
-      toast({
-        title: "Erro",
-        description: "A descrição deve ter no máximo 255 caracteres",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleEditSubmit = async () => {
+    if (!editingPermission) return;
+    if (!validateForm()) return;
 
     try {
       setSubmitting(true);
-      
-      // Montar payload com apenas os campos alterados
-      const payload: any = {};
-      if (formName.trim() !== selectedPermission.name) {
-        payload.nome_permissao = formName.trim();
+      const updateData: any = {};
+      if (formName.trim() !== editingPermission.nome_permissao) {
+        updateData.nome_permissao = formName.trim();
       }
-      if (formDescription.trim() !== selectedPermission.description) {
-        payload.descricao = formDescription.trim();
+      if (formDescription.trim() !== (editingPermission.desc_permissao || "")) {
+        updateData.desc_permissao = formDescription.trim() || null;
+      }
+      if (formStatus !== editingPermission.status_permissao) {
+        updateData.status_permissao = formStatus;
       }
 
-      // Se nada mudou, apenas fecha o modal
-      if (Object.keys(payload).length === 0) {
+      if (Object.keys(updateData).length === 0) {
+        toast({
+          title: "Nenhuma alteração detectada",
+          variant: "default",
+        });
         setIsEditDialogOpen(false);
         return;
       }
 
-      await updatePermissao(selectedPermission.id, payload);
-      
+      await updatePermission(editingPermission.id_permissao!, updateData);
       toast({
         title: "Permissão atualizada",
-        description: "As alterações foram salvas com sucesso.",
+        description: "A permissão foi atualizada com sucesso",
       });
-      
       setIsEditDialogOpen(false);
-      await loadPermissions();
+      loadPermissions();
     } catch (error: any) {
-      const errorMessage = error.message || "Ocorreu um erro. Tente novamente.";
-      
-      // Detectar erro 409 (nome duplicado)
-      if (errorMessage.includes("409") || errorMessage.toLowerCase().includes("já existe") || errorMessage.toLowerCase().includes("duplicad")) {
+      if (error.message.includes("409")) {
         setNameError("Já existe uma permissão com esse nome");
         toast({
-          title: "Nome duplicado",
+          title: "Erro ao atualizar permissão",
           description: "Já existe uma permissão com esse nome",
           variant: "destructive",
         });
       } else {
         toast({
           title: "Erro ao atualizar permissão",
-          description: errorMessage,
+          description: error.message || "Ocorreu um erro desconhecido",
           variant: "destructive",
         });
       }
@@ -325,192 +274,139 @@ export default function Permissions() {
     }
   };
 
-  const totalPages = Math.ceil(total / pageSize);
-  const canGoPrevious = page > 1;
-  const canGoNext = page < totalPages;
+  const handleDeletePermission = (permission: Permissao) => {
+    setConfirmPermission(permission);
+    setIsConfirmDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmPermission) return;
+
+    try {
+      setSubmitting(true);
+      await deletePermission(confirmPermission.id_permissao!);
+      toast({
+        title: "Permissão excluída",
+        description: "A permissão foi excluída com sucesso",
+      });
+      setIsConfirmDialogOpen(false);
+      loadPermissions();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao excluir permissão",
+        description: error.message || "Ocorreu um erro desconhecido",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setPage(1);
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Permissões</h1>
-          <p className="text-muted-foreground">
-            Gerencie as permissões do sistema
-          </p>
-        </div>
-        
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2" onClick={handleOpenCreate}>
-              <Plus className="h-4 w-4" />
-              Nova Permissão
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Nova Permissão</DialogTitle>
-              <DialogDescription>
-                Configure uma nova permissão do sistema
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome da Permissão *</Label>
-                <Input
-                  id="name"
-                  placeholder="Ex: security.users.view"
-                  value={formName}
-                  onChange={(e) => {
-                    setFormName(e.target.value);
-                    setNameError("");
-                  }}
-                  className={nameError ? "border-destructive" : ""}
-                />
-                {nameError && (
-                  <p className="text-sm text-destructive">{nameError}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Formato recomendado: dominio.subdominio.acao (3-80 caracteres)
-                </p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição</Label>
-                <Textarea 
-                  id="description" 
-                  placeholder="Descreva o que esta permissão permite fazer"
-                  className="resize-none"
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  maxLength={255}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {formDescription.length}/255 caracteres
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)} disabled={submitting}>
-                Cancelar
-              </Button>
-              <Button onClick={handleCreatePermission} disabled={submitting}>
-                {submitting ? "Salvando..." : "Salvar Permissão"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+    <div className="space-y-6 p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">Permissões</h1>
+        <Button onClick={handleOpenCreateDialog}>
+          <Plus className="mr-2 h-4 w-4" />
+          Nova Permissão
+        </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Lista de Permissões</CardTitle>
-          <CardDescription>
-            {loading ? "Carregando..." : `${total} permissões encontradas (página ${page} de ${totalPages})`}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome ou descrição..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={handleSearchKeyPress}
-                className="pl-8"
-              />
-            </div>
-            <Button onClick={handleSearch} variant="outline">
-              Buscar
-            </Button>
-          </div>
+      {/* Busca local */}
+      <div className="mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome ou descrição..."
+            value={searchTerm}
+            onChange={handleSearch}
+            className="pl-9"
+          />
+        </div>
+      </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[150px]">Ações</TableHead>
+      {/* Tabela */}
+      {loading ? (
+        <div className="text-center py-8">Carregando...</div>
+      ) : filteredPermissions.length === 0 ? (
+        <div className="text-center py-8 text-muted-foreground">
+          Nenhuma permissão encontrada
+        </div>
+      ) : (
+        <>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedPermissions.map((perm) => (
+                <TableRow key={perm.id_permissao}>
+                  <TableCell className="font-medium">{perm.nome_permissao}</TableCell>
+                  <TableCell>{perm.desc_permissao || "—"}</TableCell>
+                  <TableCell>
+                    <Badge variant={perm.status_permissao === "A" ? "default" : "secondary"}>
+                      {perm.status_permissao === "A" ? "Ativo" : "Suspenso"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleViewPermission(perm.id_permissao!)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditPermission(perm.id_permissao!)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeletePermission(perm)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {permissions.map((permission) => (
-                  <TableRow key={permission.id}>
-                    <TableCell className="font-medium">{permission.name}</TableCell>
-                    <TableCell className="max-w-xs truncate">{permission.description || "—"}</TableCell>
-                    <TableCell>{getStatusBadge(permission.status)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleView(permission)} title="Visualizar">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(permission)} title="Editar">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        {permission.status === 'A' ? (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleOpenConfirm(permission, 'suspend')}
-                            title="Suspender"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-green-600 hover:text-green-700"
-                            onClick={() => handleOpenConfirm(permission, 'activate')}
-                            title="Reativar"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {!loading && permissions.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
-                      Nenhuma permissão encontrada.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </Table>
 
-          {/* Paginação */}
+          {/* Paginação local */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4">
               <div className="text-sm text-muted-foreground">
-                Mostrando {((page - 1) * pageSize) + 1} a {Math.min(page * pageSize, total)} de {total} resultados
+                Página {page} de {totalPages} ({filteredPermissions.length} resultados)
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage(p => p - 1)}
-                  disabled={!canGoPrevious}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
                   Anterior
                 </Button>
-                <div className="text-sm">
-                  Página {page} de {totalPages}
-                </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage(p => p + 1)}
-                  disabled={!canGoNext}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
                 >
                   Próxima
                   <ChevronRight className="h-4 w-4" />
@@ -518,150 +414,178 @@ export default function Permissions() {
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </>
+      )}
 
-      {/* Dialog para visualizar permissão */}
+      {/* Modal de Visualização */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Detalhes da Permissão</DialogTitle>
-            <DialogDescription>
-              Visualize as informações da permissão {selectedPermission?.name}
-            </DialogDescription>
+            <DialogDescription>Visualização completa da permissão</DialogDescription>
           </DialogHeader>
-          
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+          {selectedPermission && (
+            <div className="space-y-4">
               <div>
-                <Label className="text-sm font-medium">Nome da Permissão</Label>
-                <p className="text-sm text-muted-foreground">{selectedPermission?.name}</p>
+                <Label>Nome</Label>
+                <p className="mt-1">{selectedPermission.nome_permissao}</p>
               </div>
               <div>
-                <Label className="text-sm font-medium">Status</Label>
-                <div className="mt-1">
-                  {selectedPermission && getStatusBadge(selectedPermission.status)}
+                <Label>Descrição</Label>
+                <p className="mt-1">{selectedPermission.desc_permissao || "—"}</p>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <p className="mt-1">
+                  <Badge variant={selectedPermission.status_permissao === "A" ? "default" : "secondary"}>
+                    {selectedPermission.status_permissao === "A" ? "Ativo" : "Suspenso"}
+                  </Badge>
+                </p>
+              </div>
+              <div>
+                <Label>Cadastrado em</Label>
+                <p className="mt-1">
+                  {new Date(selectedPermission.data_cadastro).toLocaleString("pt-BR")}
+                </p>
+              </div>
+              <div>
+                <Label>Última atualização</Label>
+                <p className="mt-1">
+                  {new Date(selectedPermission.data_status).toLocaleString("pt-BR")}
+                </p>
+              </div>
+              {selectedPermission.atualizado_por && (
+                <div>
+                  <Label>Atualizado por</Label>
+                  <p className="mt-1">{selectedPermission.atualizado_por}</p>
                 </div>
-              </div>
+              )}
             </div>
-            
-            <div>
-              <Label className="text-sm font-medium">Descrição</Label>
-              <p className="text-sm text-muted-foreground">{selectedPermission?.description || "Sem descrição"}</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm font-medium">Criado em</Label>
-                <p className="text-sm text-muted-foreground">
-                  {selectedPermission?.createdAt ? new Date(selectedPermission.createdAt).toLocaleString('pt-BR') : "—"}
-                </p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Atualizado em</Label>
-                <p className="text-sm text-muted-foreground">
-                  {selectedPermission?.updatedAt ? new Date(selectedPermission.updatedAt).toLocaleString('pt-BR') : "—"}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={() => setIsViewDialogOpen(false)}>
-              Fechar
-            </Button>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
-      {/* Dialog para editar permissão */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
+      {/* Modal de Criação */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Permissão</DialogTitle>
-            <DialogDescription>
-              Altere as informações da permissão {selectedPermission?.name}
-            </DialogDescription>
+            <DialogTitle>Nova Permissão</DialogTitle>
+            <DialogDescription>Crie uma nova permissão no sistema</DialogDescription>
           </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Nome da Permissão *</Label>
-              <Input 
-                id="edit-name" 
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="create-name">Nome *</Label>
+              <Input
+                id="create-name"
                 value={formName}
-                onChange={(e) => {
-                  setFormName(e.target.value);
-                  setNameError("");
-                }}
-                placeholder="Ex: security.users.view"
-                className={nameError ? "border-destructive" : ""}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="security.users.view"
               />
-              {nameError && (
-                <p className="text-sm text-destructive">{nameError}</p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                Formato recomendado: dominio.subdominio.acao (3-80 caracteres)
-              </p>
+              {nameError && <p className="text-sm text-destructive mt-1">{nameError}</p>}
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="edit-description">Descrição</Label>
-              <Textarea 
-                id="edit-description" 
+            <div>
+              <Label htmlFor="create-description">Descrição</Label>
+              <Input
+                id="create-description"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
-                placeholder="Descreva o que esta permissão permite fazer"
-                className="resize-none"
-                maxLength={255}
+                placeholder="Descrição da permissão (até 120 caracteres)"
               />
-              <p className="text-xs text-muted-foreground">
-                {formDescription.length}/255 caracteres
-              </p>
+            </div>
+            <div>
+              <Label htmlFor="create-status">Status</Label>
+              <Select value={formStatus} onValueChange={(v: "A" | "S") => setFormStatus(v)}>
+                <SelectTrigger id="create-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="A">Ativo</SelectItem>
+                  <SelectItem value="S">Suspenso</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={submitting}>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateDialogOpen(false)}
+              disabled={submitting}
+            >
               Cancelar
             </Button>
-            <Button onClick={handleSaveEdit} disabled={submitting}>
-              {submitting ? "Salvando..." : "Salvar Alterações"}
+            <Button onClick={handleCreateSubmit} disabled={submitting}>
+              {submitting ? "Criando..." : "Criar Permissão"}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Alert Dialog para confirmar suspensão/ativação */}
+      {/* Modal de Edição */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Permissão</DialogTitle>
+            <DialogDescription>Altere os dados da permissão</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-name">Nome *</Label>
+              <Input
+                id="edit-name"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+              />
+              {nameError && <p className="text-sm text-destructive mt-1">{nameError}</p>}
+            </div>
+            <div>
+              <Label htmlFor="edit-description">Descrição</Label>
+              <Input
+                id="edit-description"
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-status">Status</Label>
+              <Select value={formStatus} onValueChange={(v: "A" | "S") => setFormStatus(v)}>
+                <SelectTrigger id="edit-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="A">Ativo</SelectItem>
+                  <SelectItem value="S">Suspenso</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+              disabled={submitting}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleEditSubmit} disabled={submitting}>
+              {submitting ? "Salvando..." : "Salvar Alterações"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Confirmação de Exclusão */}
       <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {confirmAction === 'suspend' ? 'Confirmar Suspensão' : 'Confirmar Ativação'}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Excluir Permissão</AlertDialogTitle>
             <AlertDialogDescription>
-              {confirmAction === 'suspend' 
-                ? `Tem certeza que deseja suspender a permissão "${selectedPermission?.name}"?`
-                : `Tem certeza que deseja reativar a permissão "${selectedPermission?.name}"?`
-              }
+              Você tem certeza que deseja excluir esta permissão? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={submitting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmAction}
-              disabled={submitting}
-              className={confirmAction === 'suspend' 
-                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" 
-                : "bg-green-600 text-white hover:bg-green-700"
-              }
-            >
-              {submitting 
-                ? "Processando..." 
-                : confirmAction === 'suspend' 
-                  ? 'Suspender Permissão' 
-                  : 'Ativar Permissão'
-              }
+            <AlertDialogAction onClick={handleConfirmDelete} disabled={submitting}>
+              {submitting ? "Excluindo..." : "Confirmar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
