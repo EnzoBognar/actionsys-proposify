@@ -91,14 +91,16 @@ export async function suspendPerfil(id: number) {
 
 /**
  * Adiciona um usuário a um perfil
+ * POST /roles/{perfil_id}/users?user_id={userId}
  */
 export async function addUserToRole(perfilId: number, userId: number) {
-  await api.post(API_CONFIG.ENDPOINTS.ROLE_USERS(perfilId), { id_user: userId });
+  await api.post(`/roles/${perfilId}/users?user_id=${userId}`, null);
 }
 
 /**
  * Remove um usuário de um perfil
+ * DELETE /roles/{perfil_id}/users/{userId}
  */
 export async function removeUserFromRole(perfilId: number, userId: number) {
-  await api.delete(API_CONFIG.ENDPOINTS.ROLE_USER(perfilId, userId));
+  await api.delete(`/roles/${perfilId}/users/${userId}`);
 }

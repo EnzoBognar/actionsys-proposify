@@ -29,13 +29,12 @@ import {
   createUsuario,
   updateUsuario,
   deleteUsuario,
-  getUserRoles,
-  addRoleToUserDirect,
-  removeRoleFromUserDirect,
   type Usuario
 } from "@/services/users";
 import {
   listPerfis,
+  addUserToRole,
+  removeUserFromRole,
   type PerfilRead
 } from "@/services/roles";
 
@@ -90,7 +89,6 @@ export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [loadingRoles, setLoadingRoles] = useState<boolean>(false);
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -158,44 +156,20 @@ export default function Users() {
     );
   }, [users, searchTerm]);
 
-  const loadUserRoles = async (userId: number) => {
-    try {
-      setLoadingRoles(true);
-      const roles = await getUserRoles(userId);
-      const roleIds = roles.map(r => r.id_perfil);
-      setSelectedProfileIds(roleIds);
-      
-      // Atualizar o usuário selecionado com os papéis carregados
-      if (selectedUser && selectedUser.id === userId) {
-        setSelectedUser({ ...selectedUser, profileIds: roleIds });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Erro ao carregar papéis",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingRoles(false);
-    }
-  };
-
   const handleViewUser = async (user: User) => {
     setSelectedUser(user);
-    setSelectedProfileIds([]);
+    setSelectedProfileIds(user.profileIds); // Manter perfis já atribuídos
     setIsViewDialogOpen(true);
-    await loadUserRoles(user.id);
   };
 
   const handleEditUser = async (user: User) => {
     setSelectedUser(user);
-    setSelectedProfileIds([]);
+    setSelectedProfileIds(user.profileIds); // Manter perfis já atribuídos
     setSelectedProfileForAdd("");
     setEditName(user.name);
     setEditEmail(user.email);
     setEditPhone(user.phone);
     setIsEditDialogOpen(true);
-    await loadUserRoles(user.id);
   };
 
   const handleAddRole = async () => {
@@ -204,17 +178,28 @@ export default function Users() {
     const perfilId = parseInt(selectedProfileForAdd);
     
     try {
-      await addRoleToUserDirect(selectedUser.id, perfilId);
+      await addUserToRole(perfilId, selectedUser.id);
+      
+      // Atualizar estado local
+      const newProfileIds = [...selectedProfileIds, perfilId];
+      setSelectedProfileIds(newProfileIds);
+      setSelectedProfileForAdd("");
+      
+      // Atualizar também o estado de users
+      setUsers(prev => prev.map(u => 
+        u.id === selectedUser.id 
+          ? { ...u, profileIds: newProfileIds }
+          : u
+      ));
+      
       toast({
         title: "Perfil atribuído",
         description: "O perfil foi vinculado ao usuário com sucesso.",
       });
-      setSelectedProfileForAdd("");
-      await loadUserRoles(selectedUser.id);
     } catch (error: any) {
       toast({
         title: "Erro ao atribuir perfil",
-        description: error.message,
+        description: error.response?.data?.detail || error.message,
         variant: "destructive",
       });
     }
@@ -226,16 +211,27 @@ export default function Users() {
     if (!confirm("Deseja realmente remover este perfil do usuário?")) return;
 
     try {
-      await removeRoleFromUserDirect(selectedUser.id, perfilId);
+      await removeUserFromRole(perfilId, selectedUser.id);
+      
+      // Atualizar estado local
+      const newProfileIds = selectedProfileIds.filter(id => id !== perfilId);
+      setSelectedProfileIds(newProfileIds);
+      
+      // Atualizar também o estado de users
+      setUsers(prev => prev.map(u => 
+        u.id === selectedUser.id 
+          ? { ...u, profileIds: newProfileIds }
+          : u
+      ));
+      
       toast({
         title: "Perfil removido",
         description: "O perfil foi desvinculado do usuário com sucesso.",
       });
-      await loadUserRoles(selectedUser.id);
     } catch (error: any) {
       toast({
         title: "Erro ao remover perfil",
-        description: error.message,
+        description: error.response?.data?.detail || error.message,
         variant: "destructive",
       });
     }
@@ -575,22 +571,16 @@ export default function Users() {
 
               <div className="col-span-2 space-y-2">
                 <Label>Perfis Atribuídos</Label>
-                {loadingRoles ? (
-                  <div className="p-4 text-center text-muted-foreground">
-                    Carregando papéis...
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {getUserProfiles(selectedProfileIds).map((profile) => (
-                      <Badge key={profile.id} variant="secondary">
-                        {profile.name}
-                      </Badge>
-                    ))}
-                    {selectedProfileIds.length === 0 && (
-                      <p className="text-sm text-muted-foreground">Nenhum perfil atribuído</p>
-                    )}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-2">
+                  {getUserProfiles(selectedProfileIds).map((profile) => (
+                    <Badge key={profile.id} variant="secondary">
+                      {profile.name}
+                    </Badge>
+                  ))}
+                  {selectedProfileIds.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Nenhum perfil atribuído</p>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -648,66 +638,58 @@ export default function Users() {
               <div className="space-y-3">
                 <Label>Perfis Atribuídos</Label>
                 
-                {loadingRoles ? (
-                  <div className="p-4 text-center text-muted-foreground border rounded-lg">
-                    Carregando papéis...
-                  </div>
-                ) : (
-                  <>
-                    {/* Lista de papéis atuais */}
-                    <div className="space-y-2 border rounded-lg p-3">
-                      {selectedProfileIds.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-2">
-                          Nenhum perfil atribuído
-                        </p>
-                      ) : (
-                        getUserProfiles(selectedProfileIds).map((profile) => (
-                          <div key={profile.id} className="flex items-center justify-between p-2 bg-muted rounded">
-                            <div>
-                              <p className="text-sm font-medium">{profile.name}</p>
-                              <p className="text-xs text-muted-foreground">{profile.description}</p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => handleRemoveRole(profile.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Atribuir novo perfil */}
-                    <div className="space-y-2">
-                      <Label>Atribuir Novo Perfil</Label>
-                      <div className="flex gap-2">
-                        <Select value={selectedProfileForAdd} onValueChange={setSelectedProfileForAdd}>
-                          <SelectTrigger className="flex-1">
-                            <SelectValue placeholder="Selecione um perfil" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {allProfiles
-                              .filter(p => !selectedProfileIds.includes(p.id))
-                              .map((profile) => (
-                                <SelectItem key={profile.id} value={profile.id.toString()}>
-                                  {profile.name}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                        <Button 
-                          onClick={handleAddRole}
-                          disabled={!selectedProfileForAdd}
+                {/* Lista de papéis atuais */}
+                <div className="space-y-2 border rounded-lg p-3">
+                  {selectedProfileIds.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-2">
+                      Nenhum perfil atribuído
+                    </p>
+                  ) : (
+                    getUserProfiles(selectedProfileIds).map((profile) => (
+                      <div key={profile.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                        <div>
+                          <p className="text-sm font-medium">{profile.name}</p>
+                          <p className="text-xs text-muted-foreground">{profile.description}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleRemoveRole(profile.id)}
                         >
-                          Atribuir
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                    </div>
-                  </>
-                )}
+                    ))
+                  )}
+                </div>
+
+                {/* Atribuir novo perfil */}
+                <div className="space-y-2">
+                  <Label>Atribuir Novo Perfil</Label>
+                  <div className="flex gap-2">
+                    <Select value={selectedProfileForAdd} onValueChange={setSelectedProfileForAdd}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Selecione um perfil" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allProfiles
+                          .filter(p => !selectedProfileIds.includes(p.id))
+                          .map((profile) => (
+                            <SelectItem key={profile.id} value={profile.id.toString()}>
+                              {profile.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      onClick={handleAddRole}
+                      disabled={!selectedProfileForAdd}
+                    >
+                      Atribuir
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
