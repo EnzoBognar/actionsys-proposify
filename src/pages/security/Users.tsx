@@ -164,7 +164,8 @@ export default function Users() {
 
   const handleEditUser = async (user: User) => {
     setSelectedUser(user);
-    setSelectedProfileIds(user.profileIds); // Manter perfis já atribuídos
+    // Inicializar perfis apenas quando trocar de usuário
+    setSelectedProfileIds(user.profileIds);
     setSelectedProfileForAdd("");
     setEditName(user.name);
     setEditEmail(user.email);
@@ -312,13 +313,20 @@ export default function Users() {
         telefone_user: editPhone || undefined,
       });
       
+      // Atualizar apenas os dados do usuário no estado local, mantendo profileIds
+      setUsers(prev => prev.map(u => 
+        u.id === selectedUser.id 
+          ? { ...u, name: editName, phone: editPhone }
+          : u
+      ));
+      
       toast({
         title: "Usuário atualizado",
         description: "As alterações foram salvas com sucesso.",
       });
       
-      setIsEditDialogOpen(false);
-      await loadUsers();
+      // Não fechar o modal nem resetar selectedProfileIds
+      // O usuário pode continuar gerenciando perfis
     } catch (error: any) {
       toast({
         title: "Erro ao salvar alterações",
@@ -680,6 +688,11 @@ export default function Users() {
                               {profile.name}
                             </SelectItem>
                           ))}
+                        {allProfiles.filter(p => !selectedProfileIds.includes(p.id)).length === 0 && (
+                          <div className="px-2 py-1 text-sm text-muted-foreground">
+                            Todos os perfis já foram atribuídos
+                          </div>
+                        )}
                       </SelectContent>
                     </Select>
                     <Button 
