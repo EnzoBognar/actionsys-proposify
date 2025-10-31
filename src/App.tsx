@@ -21,6 +21,8 @@ import SecurityDashboard from "./pages/security/SecurityDashboard";
 import AuditLogs from "./pages/security/AuditLogs";
 import Preferences from "./pages/Preferences";
 import Profile from "./pages/Profile";
+import DomainsList from "./pages/domains/DomainsList";
+import DomainSetup from "./pages/domains/DomainSetup";
 
 const queryClient = new QueryClient();
 
@@ -102,6 +104,23 @@ const App = () => (
               </AppLayout>
             </ProtectedRoute>
           } />
+          
+          <Route path="/dominios" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <DomainsList />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/dominios/:domainName" element={
+            <ProtectedRoute>
+              <AppLayout>
+                <DomainSetup />
+              </AppLayout>
+            </ProtectedRoute>
+          } />
+          
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

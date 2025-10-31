@@ -9,7 +9,8 @@ import {
   BarChart3, 
   ChevronRight,
   Home,
-  Lock
+  Lock,
+  Layers
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -44,6 +45,10 @@ export function AppSidebar() {
       "/auditoria-logs"
     ];
     return securityPaths.some(path => currentPath.startsWith(path));
+  });
+
+  const [domainsOpen, setDomainsOpen] = useState(() => {
+    return currentPath.startsWith("/dominios");
   });
 
   const isActive = (path: string) => currentPath === path;
@@ -137,6 +142,42 @@ export function AppSidebar() {
                       <NavLink to="/auditoria-logs" className={getNavCls}>
                         <Settings className="h-4 w-4" />
                         {!isCollapsed && <span>Auditoria e Logs</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </CollapsibleContent>
+          </Collapsible>
+        </SidebarGroup>
+
+        {/* Domínios */}
+        <SidebarGroup>
+          <Collapsible 
+            open={domainsOpen} 
+            onOpenChange={setDomainsOpen}
+            className="group/collapsible"
+          >
+            <SidebarGroupLabel asChild>
+              <CollapsibleTrigger className="flex w-full items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Layers className="h-4 w-4" />
+                  {!isCollapsed && <span>Domínios</span>}
+                </div>
+                {!isCollapsed && (
+                  <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                )}
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            
+            <CollapsibleContent>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild>
+                      <NavLink to="/dominios" className={getNavCls}>
+                        <Layers className="h-4 w-4" />
+                        {!isCollapsed && <span>Gerenciamento</span>}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
