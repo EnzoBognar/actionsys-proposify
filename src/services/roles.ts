@@ -104,3 +104,35 @@ export async function addUserToRole(perfilId: number, userId: number) {
 export async function removeUserFromRole(perfilId: number, userId: number) {
   await api.delete(`/roles/${perfilId}/users/${userId}`);
 }
+
+/**
+ * Lista permissões atribuídas a um perfil
+ * GET /roles/{perfil_id}/permissions
+ */
+export async function listRolePermissions(perfilId: number): Promise<any[]> {
+  return await api.get(`/roles/${perfilId}/permissions`);
+}
+
+/**
+ * Lista permissões disponíveis (não atribuídas) para um perfil
+ * GET /roles/{perfil_id}/permissions/available
+ */
+export async function listAvailablePermissions(perfilId: number): Promise<any[]> {
+  return await api.get(`/roles/${perfilId}/permissions/available`);
+}
+
+/**
+ * Adiciona uma permissão a um perfil
+ * POST /roles/{perfil_id}/permissions?perm_id={permId}
+ */
+export async function addPermissionToRole(perfilId: number, permId: number) {
+  await api.post(`/roles/${perfilId}/permissions?perm_id=${permId}`, null);
+}
+
+/**
+ * Remove uma permissão de um perfil
+ * DELETE /roles/{perfil_id}/permissions/{permId}
+ */
+export async function removePermissionFromRole(perfilId: number, permId: number) {
+  await api.delete(`/roles/${perfilId}/permissions/${permId}`);
+}

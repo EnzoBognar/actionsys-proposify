@@ -2,6 +2,8 @@
 import { api } from "@/lib/api";
 import { Dominio, DominioValor, DominioListParams, DominioValorListParams } from "@/types/domains";
 
+export type { DominioValor, DominioValorListParams };
+
 const BASE_PATH = "/domains";
 
 // ========== Domínios ==========
